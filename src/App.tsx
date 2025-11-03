@@ -10,7 +10,7 @@ import {
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { ellipse, square, triangle } from 'ionicons/icons';
+import { ellipse, square, triangle, camera, list, person } from 'ionicons/icons';
 import Liste from './pages/Liste';
 import Scan from './pages/Scan';
 import Gestion_évenement from './pages/Gestion_évenement';
@@ -67,15 +67,15 @@ const App: React.FC = () => (
         </IonRouterOutlet>
         <IonTabBar slot="bottom">
           <IonTabButton tab="Liste" href="/Liste">
-            <IonIcon aria-hidden="true" icon={triangle} />
+            <IonIcon aria-hidden="true" icon={list} />
             <IonLabel>Liste</IonLabel>
           </IonTabButton>
           <IonTabButton tab="Scan" href="/Scan">
-            <IonIcon aria-hidden="true" icon={ellipse} />
+            <IonIcon aria-hidden="true" icon={camera} />
             <IonLabel>Scan</IonLabel>
           </IonTabButton>
           <IonTabButton tab="Gestion_évenement" href="/Gestion_évenement">
-            <IonIcon aria-hidden="true" icon={square} />
+            <IonIcon aria-hidden="true" icon={person} />
             <IonLabel>Gestion_évenement</IonLabel>
           </IonTabButton>
         </IonTabBar>
