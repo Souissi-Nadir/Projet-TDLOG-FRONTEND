@@ -10,7 +10,7 @@ import {
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { ellipse, square, triangle, camera, list, person } from 'ionicons/icons';
+import { ellipse, camera, list, person } from 'ionicons/icons';
 import Participants from './pages/Participants';
 import Scan from './pages/Scan';
 import Gestion_évenements from './pages/Gestion_évenements';
@@ -75,7 +75,7 @@ const App: React.FC = () => (
             <IonLabel>Scan</IonLabel>
           </IonTabButton>
           <IonTabButton tab="Gestion_évenements" href="/Gestion_évenements">
-            <IonIcon aria-hidden="true" icon={square} />
+            <IonIcon aria-hidden="true" icon={person} />
             <IonLabel>Gestion d'évenements</IonLabel>
           </IonTabButton>
         </IonTabBar>
