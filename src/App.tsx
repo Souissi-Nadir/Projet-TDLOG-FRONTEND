@@ -13,7 +13,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { ellipse, square, triangle, camera, list, person } from 'ionicons/icons';
 import Liste from './pages/Liste';
 import Scan from './pages/Scan';
-import Gestion_évenement from './pages/Gestion_évenement';
+import Gestion_évenements from './pages/Gestion_évenements';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -58,8 +58,8 @@ const App: React.FC = () => (
           <Route exact path="/Scan">
             <Scan />
           </Route>
-          <Route path="/Gestion_évenement">
-            <Gestion_évenement />
+          <Route path="/Gestion_évenements">
+            <Gestion_évenements />
           </Route>
           <Route exact path="/">
             <Redirect to="/Liste" />
@@ -74,9 +74,9 @@ const App: React.FC = () => (
             <IonIcon aria-hidden="true" icon={camera} />
             <IonLabel>Scan</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="Gestion_évenement" href="/Gestion_évenement">
-            <IonIcon aria-hidden="true" icon={person} />
-            <IonLabel>Gestion_évenement</IonLabel>
+          <IonTabButton tab="Gestion_évenements" href="/Gestion_évenements">
+            <IonIcon aria-hidden="true" icon={square} />
+            <IonLabel>Gestion d'évenements</IonLabel>
           </IonTabButton>
         </IonTabBar>
       </IonTabs>
@@ -85,3 +85,4 @@ const App: React.FC = () => (
 );
 
 export default App;
+
