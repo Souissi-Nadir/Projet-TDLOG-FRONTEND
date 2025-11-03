@@ -13,7 +13,7 @@ import { IonReactRouter } from '@ionic/react-router';
 import { ellipse, square, triangle } from 'ionicons/icons';
 import Liste from './pages/Liste';
 import Scan from './pages/Scan';
-import Tab3 from './pages/Tab3';
+import Gestion_évenement from './pages/Gestion_évenement';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -59,7 +59,7 @@ const App: React.FC = () => (
             <Scan />
           </Route>
           <Route path="/tab3">
-            <Tab3 />
+            <Gestion_évenement />
           </Route>
           <Route exact path="/">
             <Redirect to="/Liste" />
@@ -74,9 +74,9 @@ const App: React.FC = () => (
             <IonIcon aria-hidden="true" icon={ellipse} />
             <IonLabel>Scan</IonLabel>
           </IonTabButton>
-          <IonTabButton tab="tab3" href="/tab3">
+          <IonTabButton tab="Gestion_évenement" href="/Gestion_évenement">
             <IonIcon aria-hidden="true" icon={square} />
-            <IonLabel>Tab 3</IonLabel>
+            <IonLabel>Gestion_évenement</IonLabel>
           </IonTabButton>
         </IonTabBar>
       </IonTabs>
