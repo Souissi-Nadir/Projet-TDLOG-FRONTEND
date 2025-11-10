@@ -1,3 +1,6 @@
+/* ===========================
+   Barre du haut (toolbar)
+   =========================== */
 .participants-toolbar {
   --background: var(--ion-color-primary);
   --color: white;
@@ -8,6 +11,8 @@
 }
 
 .participants-toolbar-right {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
@@ -23,6 +28,9 @@
   margin-bottom: 2px;
 }
 
+/* ===========================
+   Contenu & Titre événement
+   =========================== */
 .participants-content {
   --padding-start: 12px;
   --padding-end: 12px;
@@ -40,13 +48,25 @@
   letter-spacing: 0.3px;
 }
 
+/* ===========================
+   Cartes (blocs)
+   =========================== */
 .block-card {
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
   margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #eaeaea;
 }
 
+.block-card ion-card-header {
+  padding-bottom: 6px; /* un peu d’air sous le titre */
+}
+
+/* ===========================
+   Formulaire d'ajout manuel
+   =========================== */
 .manual-form-list ion-item {
   --inner-padding-end: 8px;
   --padding-start: 8px;
@@ -61,27 +81,81 @@
   padding-top: 8px;
 }
 
-.csv-input {
-  width: 100%;
-  padding: 8px;
-  border: 1px dashed var(--ion-color-medium);
-  border-radius: 10px;
-  background: #fff;
+/* Grille responsive du formulaire (desktop) */
+@media (min-width: 992px) {
+  .manual-form-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+  .manual-form-list .form-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ===========================
+   Import CSV (bouton blanc)
+   =========================== */
+.csv-dropzone {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.csv-button {
+  display: inline-block;
+  background: #ffffff;
+  color: var(--ion-color-primary);
+  border: 2px dashed var(--ion-color-medium);
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 240px;
+  user-select: none;
+}
+
+.csv-button:hover {
+  background: var(--ion-color-light);
+  border-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-shade);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.csv-button:active {
+  transform: translateY(1px);
+}
+
+.csv-button:focus-visible {
+  outline: 2px solid var(--ion-color-primary);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* input file masqué */
+.csv-input-hidden {
+  display: none;
 }
 
 .csv-help {
+  text-align: center;
   margin-top: 8px;
   color: var(--ion-color-medium);
 }
 
-/* Tableau lisible */
+/* ===========================
+   Tableau participants
+   =========================== */
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
 }
 
 .participants-table {
-  background: white;
+  background: #ffffff;
   border-radius: 12px;
   border: 1px solid #eaeaea;
 }
@@ -98,7 +172,7 @@
 }
 
 .table-row.odd {
-  background: #fafbff;
+  background: #fafbff; /* zébrage */
 }
 
 .participants-table ion-col {
@@ -107,8 +181,15 @@
 }
 
 /* Colonnes spécifiques */
-.col-tarif { max-width: 120px; }
-.col-qr { max-width: 100px; justify-content: center; }
+.col-tarif {
+  max-width: 120px;
+}
+
+.col-qr {
+  max-width: 100px;
+  justify-content: center;
+}
+
 .col-actions {
   white-space: nowrap;
   display: flex;
@@ -116,7 +197,7 @@
   justify-content: flex-end;
 }
 
-/* Inputs verrouillés (lecture seule) */
+/* Entrées en lecture seule (verrouillées) */
 ion-input.locked {
   --color: #222;
   --background: transparent;
@@ -124,53 +205,74 @@ ion-input.locked {
   opacity: 0.9;
 }
 
+/* Focus visible sur inputs éditables (accessibilité) */
+.participants-table ion-input:not(.locked) input:focus-visible {
+  outline: 2px solid var(--ion-color-primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* QR */
 .qr-wrap {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-@media (min-width: 992px) {
-  .manual-form-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px 12px;
+/* ===========================
+   Petits ajustements boutons
+   =========================== */
+.col-actions ion-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+}
+
+.col-actions ion-button:hover {
+  filter: brightness(0.98);
+}
+
+/* ===========================
+   Dark mode léger (optionnel)
+   =========================== */
+@media (prefers-color-scheme: dark) {
+  .block-card {
+    background: var(--ion-color-step-50, #1e1e1e);
+    border-color: var(--ion-color-step-150, #2a2a2a);
+    box-shadow: none;
   }
-  .manual-form-list .form-actions {
-    grid-column: 1 / -1;
+
+  .participants-table {
+    background: var(--ion-color-step-50, #1e1e1e);
+    border-color: var(--ion-color-step-150, #2a2a2a);
   }
-}
 
-/* Cartes : un peu plus d’air en bas des headers */
-.block-card ion-card-header {
-  padding-bottom: 6px;
-}
+  .table-header {
+    background: var(--ion-color-step-100, #232323);
+    border-bottom-color: var(--ion-color-step-200, #2e2e2e);
+  }
 
-/* L’IonItem du CSV : on réduit la densité interne + on gère le spacing global */
-.csv-item {
-  --inner-padding-end: 0px;
-  --padding-start: 0px;
-  margin-top: 2px;
-}
+  .table-row {
+    border-bottom-color: var(--ion-color-step-200, #2e2e2e);
+  }
 
-/* Espace clair entre le label 
-.csv-dropzone {
-  margin-top: 12px;      
-}
+  .table-row.odd {
+    background: var(--ion-color-step-75, #212121);
+  }
 
-/* Zone blanche cliquable : un peu plus grande, confortable */
-.csv-input {
-  width: 100%;
-  padding: 14px;          /* avant 8px */
-  min-height: 56px;       /* ajoute une vraie "bande" blanche */
-  border: 1px dashed var(--ion-color-medium);
-  border-radius: 12px;    /* arrondi un peu plus généreux */
-  background: #fff;
-  cursor: pointer;
-}
+  ion-input.locked {
+    --color: #eaeaea;
+  }
 
-/* Micro feedback au survol */
-.csv-input:hover {
-  border-color: var(--ion-color-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  .csv-button {
+    background: var(--ion-color-step-50, #1e1e1e);
+    border-color: var(--ion-color-medium);
+    color: var(--ion-color-primary);
+  }
+
+  .csv-button:hover {
+    background: var(--ion-color-step-100, #232323);
+    border-color: var(--ion-color-primary);
+    color: var(--ion-color-primary-tint);
+    box-shadow: none;
+  }
 }

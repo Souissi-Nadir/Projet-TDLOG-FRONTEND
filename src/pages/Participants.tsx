@@ -259,15 +259,20 @@ const Participants: React.FC = () => {
           <IonCardHeader>
             <IonCardTitle>Importer depuis un CSV</IonCardTitle>
           </IonCardHeader>
-          <IonCardContent>
-            <IonItem lines="none" className="csv-item">
-              <IonLabel position="stacked">Fichier CSV</IonLabel>
 
-              {/* Espace supplémentaire entre le label/bandeau et la zone blanche */}
-              <div className="csv-dropzone">
-                <input className="csv-input" type="file" accept=".csv" onChange={handleCSV} />
-              </div>
-            </IonItem>
+          <IonCardContent>
+            <div className="csv-dropzone">
+              <label htmlFor="csvUpload" className="csv-button">
+                Choisir un fichier CSV
+              </label>
+              <input
+                id="csvUpload"
+                className="csv-input-hidden"
+                type="file"
+                accept=".csv"
+                onChange={handleCSV}
+              />
+            </div>
 
             <div className="csv-help">
               <IonText>
@@ -276,7 +281,7 @@ const Participants: React.FC = () => {
             </div>
           </IonCardContent>
         </IonCard>
-
+        
         {/* Bloc 3 : Tableau fusionné (import + manuel) */}
         <IonCard className="block-card">
           <IonCardHeader>
