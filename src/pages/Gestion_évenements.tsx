@@ -12,35 +12,45 @@ import {
   IonSelect,
   IonSelectOption,
   IonList,
-  IonCard, // Utilisé pour styliser les boutons comme des blocs
+  IonCard,
   IonCardContent,
   IonText
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline, chevronDownOutline } from 'ionicons/icons';
-import './Gestion_évenements.css';
+import './Gestion_évenements.css'; // S'assurer que le fichier CSS est bien importé
 
-// --- Simulation de l'état de l'utilisateur (à remplacer par votre logique d'auth) ---
-const isAuthenticated = true; // Simuler un utilisateur connecté pour l'exemple
+// --- Simulation de l'état de l'utilisateur ---
+const isAuthenticated = true;
 const userName = "Jean Dupont";
-const userProfilePicture = "URL_DE_LA_PHOTO_DE_PROFIL"; // Remplacez par une URL réelle si nécessaire
 const activeAssociation = "Association Alpha";
 const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
 
-// Liste des actions/boutons
+// Liste des actions/boutons avec leurs couleurs associées
 const eventActions = [
-  "Liste événements",
-  "Modifier événement",
-  "Supprimer événement",
-  "Historique événements",
+  { name: "Liste événements", color: "primary" }, // Bleu par défaut
+  { name: "Modifier événement", color: "warning" }, // Jaune/Orange
+  { name: "Supprimer événement", color: "danger" }, // Rouge
+  { name: "Historique événements", color: "success" }, // Vert
 ];
 // -----------------------------------------------------------------------------------
 
 const Gestion_évenements: React.FC = () => {
 
-  // Fonction factice pour simuler l'action des boutons
   const handleActionClick = (action: string) => {
-    console.log(`Action cliquée: ${action}. Redirection vers la page ${action.replace(' ', '_')} à implémenter.`);
-    // Ici, vous ajouterez la logique de navigation (ex: history.push('/liste-evenements'))
+    console.log(`Action cliquée: ${action}.`);
+    // Logique de navigation ici
+  };
+
+  // Ajout d'une fonction pour obtenir la classe CSS de la couleur
+  const getColorClass = (color: string) => {
+      // Les classes sont définies dans Gestion_évenements.css
+      switch (color) {
+          case 'primary': return 'btn-primary';
+          case 'warning': return 'btn-warning';
+          case 'danger': return 'btn-danger';
+          case 'success': return 'btn-success';
+          default: return 'btn-default';
+      }
   };
 
   return (
@@ -51,41 +61,43 @@ const Gestion_évenements: React.FC = () => {
           
           {/* Contenu Gauche du bandeau */}
           <IonButtons slot="start">
-            {isAuthenticated ? (
-              <IonItem lines="none" style={{'--padding-start': '0px', '--inner-padding-end': '0px'}}>
-                {/* Nom Prénom */}
-                <IonLabel class="ion-text-wrap" style={{ marginRight: '10px' }}>
-                  <IonText color="dark">
-                    <p style={{ margin: '0', fontWeight: 'bold' }}>{userName}</p>
-                  </IonText>
-                </IonLabel>
-                
-                {/* Menu déroulant Association */}
-                <IonSelect 
-                  value={activeAssociation} 
-                  placeholder="Sélectionner" 
-                  interface="popover"
-                  style={{ minWidth: '150px' }}
-                >
-                  {userAssociations.map((association, index) => (
-                    <IonSelectOption key={index} value={association}>
-                      {association}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
-              </IonItem>
-            ) : (
-              // Utilisateur déconnecté: Bouton Se Connecter
-              <IonButton routerLink="/login" fill="solid" color="primary">
-                Se connecter
-              </IonButton>
-            )}
+            {/* Nouveau conteneur pour ajouter de la marge gauche */}
+            <div className="header-left-content">
+                {isAuthenticated ? (
+                <IonItem lines="none" className="header-auth-item">
+                    {/* Nom Prénom */}
+                    <IonLabel class="ion-text-wrap" style={{ marginRight: '10px' }}>
+                    <IonText color="dark">
+                        <p style={{ margin: '0', fontWeight: 'bold' }}>{userName}</p>
+                    </IonText>
+                    </IonLabel>
+                    
+                    {/* Menu déroulant Association */}
+                    <IonSelect 
+                    value={activeAssociation} 
+                    placeholder="Sélectionner" 
+                    interface="popover"
+                    style={{ minWidth: '150px' }}
+                    >
+                    {userAssociations.map((association, index) => (
+                        <IonSelectOption key={index} value={association}>
+                        {association}
+                        </IonSelectOption>
+                    ))}
+                    </IonSelect>
+                </IonItem>
+                ) : (
+                // Utilisateur déconnecté: Bouton Se Connecter
+                <IonButton routerLink="/login" fill="solid" color="primary">
+                    Se connecter
+                </IonButton>
+                )}
+            </div>
           </IonButtons>
           
-          {/* Contenu Droit du bandeau */}
+          {/* Contenu Droit du bandeau (inchangé) */}
           <IonButtons slot="end">
             {isAuthenticated ? (
-              // Utilisateur connecté: Photo de profil et Déconnexion
               <IonButton onClick={() => console.log('Déconnexion cliquée')}>
                 <IonIcon 
                   icon={logOutOutline} 
@@ -93,11 +105,9 @@ const Gestion_évenements: React.FC = () => {
                   color="danger" 
                   size="large"
                 />
-                {/* Remplacer l'icône par l'image de profil si disponible. Pour l'exemple, on garde l'icône par défaut */}
                 <IonIcon icon={personCircleOutline} size="large" /> 
               </IonButton>
             ) : (
-              // Utilisateur déconnecté: Icône profil vierge
               <IonIcon icon={personCircleOutline} size="large" color="medium" />
             )}
           </IonButtons>
@@ -121,17 +131,13 @@ const Gestion_évenements: React.FC = () => {
             <IonCard 
               key={index} 
               button 
-              onClick={() => handleActionClick(action)}
-              style={{ 
-                margin: '10px 0', 
-                width: '100%', 
-                backgroundColor: '#f4f4f4', // Couleur de fond légèrement différente
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}
+              onClick={() => handleActionClick(action.name)}
+              // Appliquer la classe CSS pour la couleur et le style
+              className={`action-button-card ${getColorClass(action.color)}`}
             >
               <IonCardContent className="ion-text-center">
                 <IonLabel>
-                  <h2 style={{ margin: '0', fontWeight: 'bold' }}>{action}</h2>
+                  <h2 style={{ margin: '0', fontWeight: 'bold', color: 'white' }}>{action.name}</h2>
                 </IonLabel>
               </IonCardContent>
             </IonCard>

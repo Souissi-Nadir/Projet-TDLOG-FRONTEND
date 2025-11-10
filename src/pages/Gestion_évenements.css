@@ -1,0 +1,82 @@
+/* 1. Marge pour le contenu gauche du bandeau (Header) */
+
+/* Ajoute un espacement entre le bord gauche de l'écran et le contenu (Nom/Association) */
+.header-left-content {
+    padding-left: 15px; /* Vous pouvez ajuster cette valeur */
+}
+
+/* S'assurer que le IonItem interne n'ajoute pas de padding indésirable */
+.header-auth-item {
+    --padding-start: 0px;
+    --inner-padding-end: 0px;
+}
+
+/* 2. Style des 4 boutons d'action (IonCard) */
+
+.action-button-card {
+    margin: 15px 0 !important; /* Augmente la marge verticale entre les boutons */
+    width: 100%;
+    /* Augmente la hauteur du bouton */
+    min-height: 80px; 
+    display: flex; /* Centrage vertical du contenu */
+    align-items: center;
+    justify-content: center;
+    /* Ombre subtile pour le relief */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15); 
+    transition: transform 0.2s, box-shadow 0.2s; /* Effet au clic */
+}
+
+.action-button-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0,0,0,0.2);
+}
+
+/* Assure que le texte est centré et utilise l'espace */
+.action-button-card ion-card-content {
+    width: 100%;
+    padding: 20px !important;
+}
+
+/* Assure que les titres sont grands */
+.action-button-card h2 {
+    font-size: 1.5em; 
+}
+
+
+/* 3. Couleurs spécifiques pour chaque bouton */
+
+/* Bouton "Liste événements" (Primary - Bleu) */
+.btn-primary {
+    background-color: var(--ion-color-primary, #3880ff);
+}
+
+/* Bouton "Modifier événement" (Warning - Jaune/Orange) */
+.btn-warning {
+    background-color: var(--ion-color-warning, #ffc409);
+}
+
+/* Bouton "Supprimer événement" (Danger - Rouge) */
+.btn-danger {
+    background-color: var(--ion-color-danger, #eb445a);
+}
+
+/* Bouton "Historique événements" (Success - Vert) */
+.btn-success {
+    background-color: var(--ion-color-success, #2dd36f);
+}
+
+/* Assurer que le texte dans les boutons colorés reste lisible (blanc) */
+.btn-primary h2, 
+.btn-warning h2, 
+.btn-danger h2, 
+.btn-success h2 {
+    color: white !important;
+}
+
+/* Règle spécifique pour le texte sur le bouton Jaune/Warning si le blanc est illisible */
+/* Si l'application utilise un jaune très clair, décommenter ceci: */
+/*
+.btn-warning h2 {
+    color: var(--ion-color-dark, #222428) !important;
+}
+*/
