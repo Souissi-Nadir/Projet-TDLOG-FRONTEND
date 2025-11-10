@@ -1,4 +1,4 @@
-/*
+
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
 import ExploreContainer from '../components/ExploreContainer';
 import './Participants.css';
@@ -24,7 +24,7 @@ const Participants: React.FC = () => {
 };
 
 export default Participants;
-*/
+/*
 
 import React, { useState } from 'react';
 import {
@@ -123,7 +123,7 @@ const Participants: React.FC = () => {
           </IonToolbar>
         </IonHeader>
 
-        {/* Formulaire manuel */}
+        
         <IonList>
           <IonItem>
             <IonInput placeholder="Nom" value={form.nom} onIonChange={e => setForm({...form, nom: e.detail.value!})} />
@@ -135,13 +135,13 @@ const Participants: React.FC = () => {
           </IonItem>
         </IonList>
 
-        {/* Import CSV */}
+        
         <IonItem>
           <IonLabel>Importer CSV :</IonLabel>
           <input type="file" accept=".csv" onChange={handleCSV} />
         </IonItem>
 
-        {/* Tableau récapitulatif éditable */}
+        
         <IonGrid>
           <IonRow>
             <IonCol>Nom</IonCol>
@@ -189,3 +189,4 @@ const Participants: React.FC = () => {
 };
 
 export default Participants;
+*/
