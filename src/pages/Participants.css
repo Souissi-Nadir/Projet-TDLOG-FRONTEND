@@ -140,3 +140,37 @@ ion-input.locked {
     grid-column: 1 / -1;
   }
 }
+
+/* Cartes : un peu plus d’air en bas des headers */
+.block-card ion-card-header {
+  padding-bottom: 6px;
+}
+
+/* L’IonItem du CSV : on réduit la densité interne + on gère le spacing global */
+.csv-item {
+  --inner-padding-end: 0px;
+  --padding-start: 0px;
+  margin-top: 2px;
+}
+
+/* Espace clair entre le label 
+.csv-dropzone {
+  margin-top: 12px;      
+}
+
+/* Zone blanche cliquable : un peu plus grande, confortable */
+.csv-input {
+  width: 100%;
+  padding: 14px;          /* avant 8px */
+  min-height: 56px;       /* ajoute une vraie "bande" blanche */
+  border: 1px dashed var(--ion-color-medium);
+  border-radius: 12px;    /* arrondi un peu plus généreux */
+  background: #fff;
+  cursor: pointer;
+}
+
+/* Micro feedback au survol */
+.csv-input:hover {
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
