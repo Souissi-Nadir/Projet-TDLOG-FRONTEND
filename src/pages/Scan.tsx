@@ -1,19 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   IonPage,
   IonHeader,
   IonToolbar,
   IonTitle,
   IonContent,
-  IonText
-} from '@ionic/react';
-import { BrowserQRCodeReader, IScannerControls } from '@zxing/browser';
-import './Scan.css';
+  IonText,
+} from "@ionic/react";
+import { BrowserQRCodeReader } from "@zxing/browser";
+import "./Scan.css";
 
-type ScanStatus = 'idle' | 'success' | 'error';
+type ScanStatus = "idle" | "success" | "error";
 
-// À adapter si ton backend est sur une autre URL
-const SCAN_API_URL = '/scan';
+const SCAN_API_URL = "/scan";
 
 interface ScanResult {
   valid: boolean;
@@ -26,42 +25,44 @@ interface ScanResult {
 
 const Scan: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const controlsRef = useRef<IScannerControls | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const qrReaderRef = useRef<BrowserQRCodeReader | null>(null);
+  const scanIntervalRef = useRef<number | null>(null);
 
-  const [status, setStatus] = useState<ScanStatus>('idle');
-  const [message, setMessage] = useState<string>('Place le QR code dans le cadre');
+  const [status, setStatus] = useState<ScanStatus>("idle");
+  const [message, setMessage] = useState("Place le QR code dans le cadre");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastToken, setLastToken] = useState<string | null>(null);
 
-  // ---- Appel au backend ----
-  const checkAndMarkTicket = async (token: string): Promise<ScanResult | null> => {
+  // --- Appel au backend ---
+  const checkAndMarkTicket = async (
+    token: string
+  ): Promise<ScanResult | null> => {
     try {
       const res = await fetch(SCAN_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }) // <-- correspond à ScanRequest(token: str)
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
       });
 
       if (!res.ok) {
-        console.error('HTTP error', res.status);
+        console.error("HTTP error", res.status);
         return null;
       }
 
       const data: ScanResult = await res.json();
       return data;
     } catch (e) {
-      console.error('Erreur réseau / backend', e);
+      console.error("Erreur réseau / backend", e);
       return null;
     }
   };
 
-  // ---- Quand un QR est détecté ----
   const handleScan = async (token: string) => {
     if (isProcessing) return;
     setIsProcessing(true);
 
-    // éviter de re-traiter en boucle le même token quand l’utilisateur ne bouge pas
-    if (lastToken === token && status !== 'idle') {
+    if (lastToken === token && status !== "idle") {
       setIsProcessing(false);
       return;
     }
@@ -70,83 +71,98 @@ const Scan: React.FC = () => {
     setLastToken(token);
 
     if (!data) {
-      setStatus('error');
-      setMessage('Erreur de communication avec le serveur');
+      setStatus("error");
+      setMessage("Erreur de communication avec le serveur");
     } else if (data.valid) {
-      // ✅ Premier scan / ticket accepté
-      setStatus('success');
+      setStatus("success");
       setMessage(
         data.user_name
           ? `Présence enregistrée pour ${data.user_name} ✅`
-          : 'Présence enregistrée ✅'
+          : "Présence enregistrée ✅"
       );
     } else {
-      // ❌ Ticket refusé
-      if (data.reason === 'already_scanned') {
-        setStatus('error');
-        setMessage('Le QR code a déjà été scanné');
-      } else if (data.reason === 'ticket_not_found') {
-        setStatus('error');
-        setMessage('Ticket introuvable / QR non valide');
+      if (data.reason === "already_scanned") {
+        setStatus("error");
+        setMessage("Le QR code a déjà été scanné");
+      } else if (data.reason === "ticket_not_found") {
+        setStatus("error");
+        setMessage("Ticket introuvable / QR non valide");
       } else {
-        setStatus('error');
+        setStatus("error");
         setMessage("Le ticket n'est pas valide");
       }
     }
 
-    // après un court délai on repasse en mode scan
     setTimeout(() => {
-      setStatus('idle');
-      setMessage('Place le QR code dans le cadre');
+      setStatus("idle");
+      setMessage("Place le QR code dans le cadre");
       setIsProcessing(false);
     }, 1600);
   };
 
-  // ---- Initialisation de la caméra + lecteur de QR ----
   useEffect(() => {
-    const codeReader = new BrowserQRCodeReader();
-    let isCancelled = false;
-
-    const startScanner = async () => {
+    const setupCameraAndScanner = async () => {
       if (!videoRef.current) return;
 
       try {
-        const controls = await codeReader.decodeFromVideoDevice(
-          null,           // caméra par défaut
-          videoRef.current,
-          (result, error, ctrl) => {
-            if (isCancelled) {
-              ctrl?.stop();
-              return;
-            }
+        // 1) Demande d’accès caméra + affichage dans la vidéo
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment", // sur téléphone → caméra arrière
+          },
+          audio: false,
+        });
 
+        streamRef.current = stream;
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+
+        // 2) Instanciation du reader ZXing
+        const reader = new BrowserQRCodeReader();
+        qrReaderRef.current = reader;
+
+        // 3) On scanne régulièrement le contenu de la vidéo
+        scanIntervalRef.current = window.setInterval(async () => {
+          if (!videoRef.current || !qrReaderRef.current) return;
+
+          try {
+            const result = await qrReaderRef.current.decodeFromVideoElement(
+              videoRef.current
+            );
             if (result) {
               const text = result.getText();
-              // Ici, "text" EST TON token
               handleScan(text);
             }
-            // erreurs de décodage normales ignorées
+          } catch (err) {
+            // Erreur "NotFoundException" = pas de QR dans l'image → normal, on ignore
+            // On évite de spam la console ici
           }
-        );
-        controlsRef.current = controls;
+        }, 500); // toutes les 500 ms
       } catch (e) {
-        console.error('Erreur accès caméra :', e);
-        setStatus('error');
-        setMessage('Impossible d’accéder à la caméra');
+        console.error("Erreur accès caméra :", e);
+        setStatus("error");
+        setMessage("Impossible d’accéder à la caméra");
       }
     };
 
-    startScanner();
+    setupCameraAndScanner();
 
     return () => {
-      isCancelled = true;
-      if (controlsRef.current) {
-        controlsRef.current.stop();
+      // Nettoyage à la sortie de la page
+      if (scanIntervalRef.current) {
+        window.clearInterval(scanIntervalRef.current);
+        scanIntervalRef.current = null;
       }
-      codeReader.reset();
+      if (qrReaderRef.current) {
+        qrReaderRef.current.reset();
+        qrReaderRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // une seule fois au montage
 
   return (
     <IonPage>
@@ -156,12 +172,9 @@ const Scan: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      <IonContent
-        fullscreen
-        className={`scan-content scan-status-${status}`}
-      >
-        <div className="scan-overlay">
-          {/* Carré caméra au centre */}
+      {/* PAS de fullscreen → la TabBar reste dessous */}
+      <IonContent className={`scan-content scan-status-${status}`}>
+        <div className="scan-container">
           <div className="scan-frame-wrapper">
             <div className="scan-frame">
               <video
@@ -175,7 +188,6 @@ const Scan: React.FC = () => {
             </div>
           </div>
 
-          {/* Message en bas */}
           <div className="scan-message">
             <IonText>
               <p>{message}</p>
