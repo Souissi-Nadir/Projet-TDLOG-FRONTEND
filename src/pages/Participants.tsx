@@ -1,3 +1,7 @@
+//test de la com avec le backend 
+import { getHealth } from '../api';
+
+
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   IonPage,
@@ -53,6 +57,7 @@ const getActiveAssociation = () =>
 
 const Participants: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [backendStatus, setBackendStatus] = useState<string>('chargement...'); //test backend
   const [form, setForm] = useState({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
   const [present] = useIonToast();
 
@@ -80,6 +85,19 @@ const Participants: React.FC = () => {
       setSelectedEvent(availableEvents[0]);
     }
   }, [availableEvents, selectedEvent]);
+
+  useEffect(() => {
+  getHealth()
+    .then((data) => {
+      // si ton backend renvoie { "status": "ok" }
+      setBackendStatus(data.status || 'ok');
+    })
+    .catch((err) => {
+      console.error(err);
+      setBackendStatus('erreur');
+    });
+}, []);
+
 
   // Ajouter manuellement
   const addParticipant = () => {
@@ -277,6 +295,10 @@ const Participants: React.FC = () => {
             <div className="csv-help">
               <IonText>
                 <small>Entêtes attendues : <b>nom, prenom, promo, email, tarif</b></small>
+              </IonText>
+              {/* ICI on affiche le statut du backend */}
+              <IonText color={backendStatus === 'ok' ? 'success' : 'danger'}>
+                <small>Backend : {backendStatus}</small>
               </IonText>
             </div>
           </IonCardContent>
