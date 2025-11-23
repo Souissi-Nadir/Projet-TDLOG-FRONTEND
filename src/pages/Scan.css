@@ -1,0 +1,76 @@
+/* Fond de la page selon l’état */
+.scan-content {
+  --background: #000;
+  background: #000;
+  color: #fff;
+  transition: background-color 0.25s ease;
+}
+
+.scan-status-idle {
+  background: #000000;
+}
+
+.scan-status-success {
+  background: #0b8e4a; /* vert */
+}
+
+.scan-status-error {
+  background: #b00020; /* rouge */
+}
+
+/* Contenu centré mais on laisse la tabbar visible */
+.scan-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  padding-bottom: 80px; /* pour ne pas empiéter sur la TabBar */
+}
+
+/* Carré caméra */
+.scan-frame-wrapper {
+  width: 80vw;
+  max-width: 320px;
+  aspect-ratio: 1 / 1; /* carré */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scan-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+/* Vidéo dans le cadre */
+.scan-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Bordure blanche autour du cadre */
+.scan-frame-border {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  border: 3px solid rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+
+/* Message sous le cadre */
+.scan-message {
+  margin-top: 18px;
+  text-align: center;
+}
+
+.scan-message p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
