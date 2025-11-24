@@ -9,10 +9,9 @@ import {
 } from "@ionic/react";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import "./Scan.css";
+import { scanTicket } from "../api"; // 
 
 type ScanStatus = "idle" | "success" | "error";
-
-const SCAN_API_URL = "/scan";
 
 interface ScanResult {
   valid: boolean;
@@ -32,20 +31,12 @@ const Scan: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastToken, setLastToken] = useState<string | null>(null);
 
-  // --- Appel au backend ---
+  // --- Appel au backend via api.ts ---
   const checkAndMarkTicket = async (
     token: string
   ): Promise<ScanResult | null> => {
     try {
-      const res = await fetch(SCAN_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-
-      if (!res.ok) return null;
-
-      const data: ScanResult = await res.json();
+      const data = (await scanTicket(token)) as ScanResult;
       return data;
     } catch (e) {
       return null;
@@ -56,6 +47,7 @@ const Scan: React.FC = () => {
     if (isProcessing) return;
     setIsProcessing(true);
 
+    // évite de retraiter 10 fois le même QR d'affilée
     if (lastToken === token && status !== "idle") {
       setIsProcessing(false);
       return;
@@ -104,12 +96,12 @@ const Scan: React.FC = () => {
         const controls = await reader.decodeFromVideoDevice(
           undefined, // caméra par défaut
           videoRef.current,
-          (result, error) => {
+          (result, _error) => {
             if (result) {
               const text = result.getText();
               handleScan(text);
             }
-            // erreurs = normales si pas de QR → on ignore
+            // les erreurs sont normales tant qu'il ne voit pas de QR
           }
         );
 
