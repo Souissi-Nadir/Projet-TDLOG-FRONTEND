@@ -9,7 +9,7 @@ import {
 } from "@ionic/react";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import "./Scan.css";
-import { scanTicket } from "../api"; // 
+import { scanTicket } from "../api"; // 👈 on utilise l'API centralisée
 
 type ScanStatus = "idle" | "success" | "error";
 
@@ -39,11 +39,13 @@ const Scan: React.FC = () => {
       const data = (await scanTicket(token)) as ScanResult;
       return data;
     } catch (e) {
+      console.error("Erreur scanTicket:", e);
       return null;
     }
   };
 
   const handleScan = async (token: string) => {
+    console.log("QR scanné :", token); // 👈 debug visible dans la console
     if (isProcessing) return;
     setIsProcessing(true);
 
@@ -107,6 +109,7 @@ const Scan: React.FC = () => {
 
         controlsRef.current = controls;
       } catch (e) {
+        console.error("Erreur accès caméra:", e);
         setStatus("error");
         setMessage("Impossible d’accéder à la caméra");
       }
