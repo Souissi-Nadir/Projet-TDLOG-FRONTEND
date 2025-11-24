@@ -1,8 +1,10 @@
+//PAGE QUI COMMUNIQUE AVEC LE FRONTEND, NE PAS MODIFIER SANS PARLER AVEC ARTHUR
+
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string;
 
-// Petite fonction utilitaire pour gérer les erreurs proprement
-async function request(path: string, options?: RequestInit) {
+// Fonction générique pour les requêtes
+async function request(path: string, options: RequestInit = {}) {
   const res = await fetch(`${BACKEND_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
@@ -11,19 +13,68 @@ async function request(path: string, options?: RequestInit) {
   });
 
   if (!res.ok) {
-    // Tu peux logger ou afficher un message plus tard
-    throw new Error(`Erreur API ${res.status}`);
+    const errorText = await res.text();
+    throw new Error(`Erreur API ${res.status} : ${errorText}`);
   }
 
-  // Si tu sais que le backend renvoie du JSON
   return res.json();
 }
 
-// Exemple : appel de la route /health
+// -------------------------
+//        HEALTH (verifie le bon fonctionnement)
+// -------------------------
 export async function getHealth() {
-  return request("/health");
+  return request("/");
 }
 
-// Tu pourras ensuite ajouter des fonctions du style :
-// export async function createTicket(data: TicketPayload) { ... }
-// export async function scanTicket(qrCode: string) { ... }
+// -------------------------
+//        AUTH
+// -------------------------
+export async function login(username: string, password: string) {
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+// -------------------------
+//        EVENTS
+// -------------------------
+export async function getEvents() {
+  return request("/events");
+}
+
+export async function getEvent(eventId: number) {
+  return request(`/events/${eventId}`);
+}
+
+export async function createEvent(data: any) {
+  return request("/events", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// -------------------------
+//        TICKETS
+// -------------------------
+export async function getEventTickets(eventId: number) {
+  return request(`/events/${eventId}/tickets`);
+}
+
+export async function createTicket(eventId: number, payload: any) {
+  return request(`/events/${eventId}/tickets`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+// -------------------------
+//        SCAN
+// -------------------------
+export async function scanTicket(token: string) {
+  return request("/scan", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
