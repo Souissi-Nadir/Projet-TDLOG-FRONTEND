@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   IonPage,
@@ -7,11 +8,11 @@ import {
   IonContent,
   IonText,
 } from "@ionic/react";
-import { BrowserQRCodeReader } from "@zxing/browser";
+import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser"; // Import de IScannerControls
 import "./Scan.css";
 
+// --- Définitions ---
 type ScanStatus = "idle" | "success" | "error";
-
 const SCAN_API_URL = "/scan";
 
 interface ScanResult {
@@ -25,9 +26,9 @@ interface ScanResult {
 
 const Scan: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  // controlsRef stockera l'objet retourné par zxing pour contrôler le flux (démarrer/arrêter)
+  const controlsRef = useRef<IScannerControls | null>(null); 
   const qrReaderRef = useRef<BrowserQRCodeReader | null>(null);
-  const scanIntervalRef = useRef<number | null>(null);
 
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [message, setMessage] = useState("Place le QR code dans le cadre");
@@ -38,6 +39,7 @@ const Scan: React.FC = () => {
   const checkAndMarkTicket = async (
     token: string
   ): Promise<ScanResult | null> => {
+    // Le reste de cette fonction reste inchangé
     try {
       const res = await fetch(SCAN_API_URL, {
         method: "POST",
@@ -58,14 +60,19 @@ const Scan: React.FC = () => {
     }
   };
 
-  const handleScan = async (token: string) => {
+  // --- Handler de Scan (Déclenché par le Callback) ---
+  const handleScanToken = async (token: string) => {
+    // Si nous sommes déjà en train de traiter un résultat ou le même jeton, on ignore.
     if (isProcessing) return;
-    setIsProcessing(true);
-
+    
+    // Si le dernier jeton scanné est le même et qu'il est déjà traité (statut non "idle"), on ignore.
+    // Cela évite de spammer le serveur avec le même QR code.
     if (lastToken === token && status !== "idle") {
-      setIsProcessing(false);
       return;
     }
+    
+    // **** Début du Traitement ****
+    setIsProcessing(true);
 
     const data = await checkAndMarkTicket(token);
     setLastToken(token);
@@ -81,6 +88,7 @@ const Scan: React.FC = () => {
           : "Présence enregistrée ✅"
       );
     } else {
+      // Gestion des raisons d'échec
       if (data.reason === "already_scanned") {
         setStatus("error");
         setMessage("Le QR code a déjà été scanné");
@@ -93,77 +101,58 @@ const Scan: React.FC = () => {
       }
     }
 
+    // Réinitialiser le statut après un court délai
     setTimeout(() => {
       setStatus("idle");
       setMessage("Place le QR code dans le cadre");
       setIsProcessing(false);
     }, 1600);
   };
+  // ----------------------------------------------------
+
 
   useEffect(() => {
     const setupCameraAndScanner = async () => {
       if (!videoRef.current) return;
 
       try {
-        // 1) Demande d’accès caméra + affichage dans la vidéo
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "environment", // sur téléphone → caméra arrière
-          },
-          audio: false,
-        });
+        // 1) Instanciation du reader ZXing
+        qrReaderRef.current = new BrowserQRCodeReader();
 
-        streamRef.current = stream;
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-
-        // 2) Instanciation du reader ZXing
-        const reader = new BrowserQRCodeReader();
-        qrReaderRef.current = reader;
-
-        // 3) On scanne régulièrement le contenu de la vidéo
-        scanIntervalRef.current = window.setInterval(async () => {
-          if (!videoRef.current || !qrReaderRef.current) return;
-
-          try {
-            const result = await qrReaderRef.current.decodeFromVideoElement(
-              videoRef.current
-            );
+        // 2) Démarre le flux vidéo et la détection en mode continu
+        controlsRef.current = await qrReaderRef.current.decodeFromVideoDevice(
+          undefined, // Utilise la caméra par défaut (environnement)
+          videoRef.current,
+          (result, error) => {
+            // Callback déclenché à chaque scan réussi
             if (result) {
-              const text = result.getText();
-              handleScan(text);
+              handleScanToken(result.getText());
             }
-          } catch (err) {
-            // Erreur "NotFoundException" = pas de QR dans l'image → normal, on ignore
-            // On évite de spam la console ici
+            // Les erreurs sont généralement des 'NotFoundException' (pas de QR) -> on les ignore.
+            // if (error) console.error("Erreur de détection:", error);
           }
-        }, 500); // toutes les 500 ms
+        );
+
       } catch (e) {
-        console.error("Erreur accès caméra :", e);
+        console.error("Erreur accès caméra / scan :", e);
         setStatus("error");
-        setMessage("Impossible d’accéder à la caméra");
+        setMessage("Impossible d’accéder à la caméra ou de démarrer le scan.");
       }
     };
 
     setupCameraAndScanner();
 
     return () => {
-      // Nettoyage à la sortie de la page
-      if (scanIntervalRef.current) {
-        window.clearInterval(scanIntervalRef.current);
-        scanIntervalRef.current = null;
+      // Nettoyage à la sortie de la page: Utilise l'objet de contrôle IScannerControls
+      if (controlsRef.current) {
+        controlsRef.current.stop(); // Utilise stop() au lieu de l'obsolète reset()
+        controlsRef.current = null;
       }
-      if (qrReaderRef.current) {
-        qrReaderRef.current.reset();
-        qrReaderRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
+      qrReaderRef.current = null; // Libère l'instance du reader
     };
   }, []); // une seule fois au montage
 
+  // Le reste du composant reste inchangé
   return (
     <IonPage>
       <IonHeader>
@@ -177,6 +166,7 @@ const Scan: React.FC = () => {
         <div className="scan-container">
           <div className="scan-frame-wrapper">
             <div className="scan-frame">
+              {/* L'élément vidéo est toujours nécessaire pour afficher le flux */}
               <video
                 ref={videoRef}
                 className="scan-video"
