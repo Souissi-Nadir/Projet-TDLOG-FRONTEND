@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import {
   IonPage,
@@ -8,27 +7,25 @@ import {
   IonContent,
   IonText,
 } from "@ionic/react";
-import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser"; // Import de IScannerControls
+import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import "./Scan.css";
 
-// --- Définitions ---
 type ScanStatus = "idle" | "success" | "error";
+
 const SCAN_API_URL = "/scan";
 
 interface ScanResult {
   valid: boolean;
-  reason?: string | null;      // "ticket_not_found", "already_scanned", ...
+  reason?: string | null;
   user_email?: string | null;
   user_name?: string | null;
   event_id?: number | null;
-  status?: string | null;      // UNUSED / SCANNED / CANCELED etc.
+  status?: string | null;
 }
 
 const Scan: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  // controlsRef stockera l'objet retourné par zxing pour contrôler le flux (démarrer/arrêter)
-  const controlsRef = useRef<IScannerControls | null>(null); 
-  const qrReaderRef = useRef<BrowserQRCodeReader | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
 
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [message, setMessage] = useState("Place le QR code dans le cadre");
@@ -39,7 +36,6 @@ const Scan: React.FC = () => {
   const checkAndMarkTicket = async (
     token: string
   ): Promise<ScanResult | null> => {
-    // Le reste de cette fonction reste inchangé
     try {
       const res = await fetch(SCAN_API_URL, {
         method: "POST",
@@ -47,32 +43,23 @@ const Scan: React.FC = () => {
         body: JSON.stringify({ token }),
       });
 
-      if (!res.ok) {
-        console.error("HTTP error", res.status);
-        return null;
-      }
+      if (!res.ok) return null;
 
       const data: ScanResult = await res.json();
       return data;
     } catch (e) {
-      console.error("Erreur réseau / backend", e);
       return null;
     }
   };
 
-  // --- Handler de Scan (Déclenché par le Callback) ---
-  const handleScanToken = async (token: string) => {
-    // Si nous sommes déjà en train de traiter un résultat ou le même jeton, on ignore.
+  const handleScan = async (token: string) => {
     if (isProcessing) return;
-    
-    // Si le dernier jeton scanné est le même et qu'il est déjà traité (statut non "idle"), on ignore.
-    // Cela évite de spammer le serveur avec le même QR code.
+    setIsProcessing(true);
+
     if (lastToken === token && status !== "idle") {
+      setIsProcessing(false);
       return;
     }
-    
-    // **** Début du Traitement ****
-    setIsProcessing(true);
 
     const data = await checkAndMarkTicket(token);
     setLastToken(token);
@@ -88,71 +75,58 @@ const Scan: React.FC = () => {
           : "Présence enregistrée ✅"
       );
     } else {
-      // Gestion des raisons d'échec
       if (data.reason === "already_scanned") {
         setStatus("error");
         setMessage("Le QR code a déjà été scanné");
       } else if (data.reason === "ticket_not_found") {
         setStatus("error");
-        setMessage("Ticket introuvable / QR non valide");
+        setMessage("Ticket introuvable");
       } else {
         setStatus("error");
-        setMessage("Le ticket n'est pas valide");
+        setMessage("Ticket invalide");
       }
     }
 
-    // Réinitialiser le statut après un court délai
     setTimeout(() => {
       setStatus("idle");
       setMessage("Place le QR code dans le cadre");
       setIsProcessing(false);
     }, 1600);
   };
-  // ----------------------------------------------------
-
 
   useEffect(() => {
-    const setupCameraAndScanner = async () => {
+    const reader = new BrowserQRCodeReader();
+
+    const startScanner = async () => {
       if (!videoRef.current) return;
 
       try {
-        // 1) Instanciation du reader ZXing
-        qrReaderRef.current = new BrowserQRCodeReader();
-
-        // 2) Démarre le flux vidéo et la détection en mode continu
-        controlsRef.current = await qrReaderRef.current.decodeFromVideoDevice(
-          undefined, // Utilise la caméra par défaut (environnement)
+        const controls = await reader.decodeFromVideoDevice(
+          undefined, // caméra par défaut
           videoRef.current,
           (result, error) => {
-            // Callback déclenché à chaque scan réussi
             if (result) {
-              handleScanToken(result.getText());
+              const text = result.getText();
+              handleScan(text);
             }
-            // Les erreurs sont généralement des 'NotFoundException' (pas de QR) -> on les ignore.
-            // if (error) console.error("Erreur de détection:", error);
+            // erreurs = normales si pas de QR → on ignore
           }
         );
 
+        controlsRef.current = controls;
       } catch (e) {
-        console.error("Erreur accès caméra / scan :", e);
         setStatus("error");
-        setMessage("Impossible d’accéder à la caméra ou de démarrer le scan.");
+        setMessage("Impossible d’accéder à la caméra");
       }
     };
 
-    setupCameraAndScanner();
+    startScanner();
 
     return () => {
-      // Nettoyage à la sortie de la page: Utilise l'objet de contrôle IScannerControls
-      if (controlsRef.current) {
-        controlsRef.current.stop(); // Utilise stop() au lieu de l'obsolète reset()
-        controlsRef.current = null;
-      }
-      qrReaderRef.current = null; // Libère l'instance du reader
+      controlsRef.current?.stop();
     };
-  }, []); // une seule fois au montage
+  }, []);
 
-  // Le reste du composant reste inchangé
   return (
     <IonPage>
       <IonHeader>
@@ -161,12 +135,10 @@ const Scan: React.FC = () => {
         </IonToolbar>
       </IonHeader>
 
-      {/* PAS de fullscreen → la TabBar reste dessous */}
       <IonContent className={`scan-content scan-status-${status}`}>
         <div className="scan-container">
           <div className="scan-frame-wrapper">
             <div className="scan-frame">
-              {/* L'élément vidéo est toujours nécessaire pour afficher le flux */}
               <video
                 ref={videoRef}
                 className="scan-video"
