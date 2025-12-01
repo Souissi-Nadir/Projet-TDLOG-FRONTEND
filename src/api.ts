@@ -87,3 +87,51 @@ export async function scanTicket(token: string) {
     body: JSON.stringify({ token }),
   });
 }
+
+// -------------------------
+//        STUDENTS (BASE DE DONNÉE)
+// -------------------------
+
+export type Student = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  is_external: boolean;
+};
+
+export type StudentCreate = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  is_external?: boolean;
+};
+
+// Récupérer tous les élèves (pour l'événement "Base de donnée")
+export async function getStudents(): Promise<Student[]> {
+  return request("/students");
+}
+
+// Recherche pour l'autocomplétion (nom / prénom / email)
+export async function searchStudents(q: string): Promise<Student[]> {
+  const query = q ? `?q=${encodeURIComponent(q)}` : "";
+  return request(`/students/search${query}`);
+}
+
+// Créer un élève dans la base (si pas déjà présent)
+export async function createStudent(
+  payload: StudentCreate
+): Promise<Student | null> {
+  try {
+    return await request("/students", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } catch (e: any) {
+    // si l'API renvoie 400 "Email déjà enregistré", on renvoie null
+    if (typeof e.message === "string" && e.message.includes("400")) {
+      return null;
+    }
+    throw e;
+  }
+}
