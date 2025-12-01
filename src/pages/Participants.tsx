@@ -1,6 +1,5 @@
 //test de la com avec le backend 
-import { getHealth } from '../api';
-
+import { getHealth, getEvents, createTicket, Event } from '../api';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -45,29 +44,24 @@ interface Participant {
 
 let nextId = 1;
 
-// -- Mock d’événements par asso (en attendant l’API) --
-const eventsByAssociation: Record<string, string[]> = {
-  'Association Alpha': ['Gala 2025', 'Afterwork Mars', 'Conférence IA'],
-  'Beta Events': ['Soirée Caritative', 'Hackathon Étudiant'],
-  'Gamma Group': ['Weekend Intégration', 'Forum Entreprises']
-};
+// -- Mock d’associations (pour l’affichage seulement, pas relié au backend) --
+const associations = ['Association Alpha', 'Beta Events', 'Gamma Group'];
 
 const getActiveAssociation = () =>
   localStorage.getItem('activeAssociation') || 'Association Alpha';
 
 const Participants: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [backendStatus, setBackendStatus] = useState<string>('chargement...'); //test backend
+  const [backendStatus, setBackendStatus] = useState<string>('chargement...');
   const [form, setForm] = useState({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
   const [present] = useIonToast();
 
-  // Bandeau événement
+  // Asso (pure UI)
   const [activeAssociation, setActiveAssociation] = useState<string>(getActiveAssociation());
-  const availableEvents = useMemo(
-    () => eventsByAssociation[activeAssociation] || [],
-    [activeAssociation]
-  );
-  const [selectedEvent, setSelectedEvent] = useState<string>('');
+
+  // Événements depuis le backend
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
 
   // Édition : ligne en cours d’édition (id) ou null
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -79,40 +73,85 @@ const Participants: React.FC = () => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Sélectionner le 1er événement par défaut si vide
+  // Charger la santé du backend
   useEffect(() => {
-    if (!selectedEvent && availableEvents.length > 0) {
-      setSelectedEvent(availableEvents[0]);
-    }
-  }, [availableEvents, selectedEvent]);
+    getHealth()
+      .then((data) => {
+        setBackendStatus((data as any).status || 'ok');
+      })
+      .catch((err) => {
+        console.error(err);
+        setBackendStatus('erreur');
+      });
+  }, []);
 
+  // Charger les événements depuis le backend
   useEffect(() => {
-  getHealth()
-    .then((data) => {
-      // si ton backend renvoie { "status": "ok" }
-      setBackendStatus(data.status || 'ok');
-    })
-    .catch((err) => {
-      console.error(err);
-      setBackendStatus('erreur');
-    });
-}, []);
+    getEvents()
+      .then((data) => {
+        setEvents(data as Event[]);
+        if (!selectedEventId && (data as Event[]).length > 0) {
+          setSelectedEventId((data as Event[])[0].id);
+        }
+      })
+      .catch((err) => {
+        console.error('Erreur chargement events', err);
+      });
+  }, [selectedEventId]);
 
+  // Titre de l’événement sélectionné
+  const selectedEventName = useMemo(() => {
+    const ev = events.find((e) => e.id === selectedEventId);
+    return ev ? ev.name : 'Sélectionnez un événement';
+  }, [events, selectedEventId]);
 
-  // Ajouter manuellement
-  const addParticipant = () => {
+  // Ajouter manuellement (et créer un ticket côté backend)
+  const addParticipant = async () => {
     if (!form.nom || !form.prenom) {
       present({ message: 'Nom et prénom sont requis.', duration: 1800, color: 'warning' });
       return;
     }
+    if (!selectedEventId) {
+      present({ message: 'Choisis un événement avant d’ajouter un participant.', duration: 1800, color: 'warning' });
+      return;
+    }
+
+    const tempId = nextId++;
     const newParticipant: Participant = {
-      id: nextId++,
+      id: tempId,
       ...form,
-      qrCode: `${form.nom}-${Date.now()}`
+      qrCode: `${form.nom}-${Date.now()}` // remplacé ensuite si le backend renvoie un token
     };
+
+    // On l’ajoute tout de suite côté front
     setParticipants(prev => [...prev, newParticipant]);
     setForm({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
-    present({ message: 'Participant ajouté', duration: 1200, color: 'success' });
+    present({ message: 'Participant ajouté (enregistrement en cours...)', duration: 1200, color: 'success' });
+
+    // Appel au backend pour créer le ticket
+    try {
+      const payload = {
+        user_name: `${form.prenom} ${form.nom}`,
+        user_email: form.email,
+        // ajoute d’autres champs si ton backend en attend (status, etc.)
+      };
+
+      const created = await createTicket(selectedEventId, payload);
+      const token =
+        (created as any).qr_code_token ||
+        (created as any).token ||
+        null;
+
+      if (token) {
+        // On met à jour le participant avec le vrai token backend
+        setParticipants(prev =>
+          prev.map(p => (p.id === tempId ? { ...p, qrCode: token } : p))
+        );
+      }
+    } catch (e) {
+      console.error('Erreur création ticket backend', e);
+      present({ message: "Erreur lors de l’enregistrement côté serveur", duration: 2000, color: 'danger' });
+    }
   };
 
   // Supprimer
@@ -129,18 +168,17 @@ const Participants: React.FC = () => {
         skipEmptyLines: true,
         complete: (results: Papa.ParseResult<Record<string, string>>) => {
           const imported: Participant[] = results.data
-            .filter(row => row.nom && row.prenom) // simple filtrage
+            .filter(row => row.nom && row.prenom)
             .map(row => ({
               id: nextId++,
               nom: (row.nom || '').trim(),
               prenom: (row.prenom || '').trim(),
-              promo: (row.promo || row.annee || '').trim(), // compat léger
+              promo: (row.promo || row.annee || '').trim(),
               email: (row.email || '').trim(),
               tarif: (row.tarif || '').trim(),
               qrCode: `${row.nom}-${Date.now()}`
             }));
           setParticipants(prev => [...prev, ...imported]);
-          // Reset input pour pouvoir réimporter le même fichier
           e.currentTarget.value = '';
           present({ message: `${imported.length} lignes importées`, duration: 1500, color: 'success' });
         }
@@ -155,7 +193,7 @@ const Participants: React.FC = () => {
 
   // Mettre à jour inline (seulement si en édition)
   const updateParticipant = (id: number, field: keyof Participant, value: string) => {
-    if (editingId !== id) return; // verrouillé tant que pas en mode édition
+    if (editingId !== id) return;
     setParticipants(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)));
   };
 
@@ -180,7 +218,7 @@ const Participants: React.FC = () => {
                 }}
                 interface="popover"
               >
-                {Object.keys(eventsByAssociation).map(a => (
+                {associations.map(a => (
                   <IonSelectOption key={a} value={a}>{a}</IonSelectOption>
                 ))}
               </IonSelect>
@@ -189,13 +227,15 @@ const Participants: React.FC = () => {
             <IonItem lines="none" className="toolbar-selects">
               <IonLabel position="stacked" className="toolbar-label">Événement</IonLabel>
               <IonSelect
-                value={selectedEvent}
+                value={selectedEventId ?? undefined}
                 placeholder="Choisir un événement"
                 interface="popover"
-                onIonChange={e => setSelectedEvent(e.detail.value!)}
+                onIonChange={e => setSelectedEventId(e.detail.value as number)}
               >
-                {availableEvents.map(ev => (
-                  <IonSelectOption key={ev} value={ev}>{ev}</IonSelectOption>
+                {events.map(ev => (
+                  <IonSelectOption key={ev.id} value={ev.id}>
+                    {ev.name}
+                  </IonSelectOption>
                 ))}
               </IonSelect>
             </IonItem>
@@ -207,7 +247,7 @@ const Participants: React.FC = () => {
         {/* Titre de la page / nom de l’événement */}
         <div className="event-title-wrap">
           <IonText color="dark">
-            <h1 className="event-title">{selectedEvent || 'Sélectionnez un événement'}</h1>
+            <h1 className="event-title">{selectedEventName}</h1>
           </IonText>
         </div>
 
@@ -296,14 +336,13 @@ const Participants: React.FC = () => {
               <IonText>
                 <small>Entêtes attendues : <b>nom, prenom, promo, email, tarif</b></small>
               </IonText>
-              {/* ICI on affiche le statut du backend */}
               <IonText color={backendStatus === 'ok' ? 'success' : 'danger'}>
                 <small>Backend : {backendStatus}</small>
               </IonText>
             </div>
           </IonCardContent>
         </IonCard>
-        
+
         {/* Bloc 3 : Tableau fusionné (import + manuel) */}
         <IonCard className="block-card">
           <IonCardHeader>
@@ -323,7 +362,7 @@ const Participants: React.FC = () => {
                 </IonRow>
 
                 {participants.map((p, idx) => {
-                  const locked = editingId !== p.id; // true => lecture seule
+                  const locked = editingId !== p.id;
                   return (
                     <IonRow key={p.id} className={idx % 2 ? 'table-row odd' : 'table-row'}>
                       <IonCol>
@@ -401,4 +440,3 @@ const Participants: React.FC = () => {
 };
 
 export default Participants;
-
