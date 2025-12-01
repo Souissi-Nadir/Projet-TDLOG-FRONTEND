@@ -61,12 +61,13 @@ const Participants: React.FC = () => {
   const [form, setForm] = useState({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
   const [present] = useIonToast();
 
-  // Asso (pure UI)
+  // Bandeau événement
   const [activeAssociation, setActiveAssociation] = useState<string>(getActiveAssociation());
-
-  // Événements depuis le backend
-  const [events, setEvents] = useState<Event[]>([]);
-  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const availableEvents = useMemo(
+    () => eventsByAssociation[activeAssociation] || [],
+    [activeAssociation]
+  );
+  const [selectedEvent, setSelectedEvent] = useState<string>('');
 
   // Édition : ligne en cours d’édition (id) ou null
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -78,7 +79,13 @@ const Participants: React.FC = () => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Charger la santé du backend
+  // Sélectionner le 1er événement par défaut si vide
+  useEffect(() => {
+    if (!selectedEvent && availableEvents.length > 0) {
+      setSelectedEvent(availableEvents[0]);
+    }
+  }, [availableEvents, selectedEvent]);
+
   useEffect(() => {
   getHealth()
     .then((data) => {
@@ -91,73 +98,21 @@ const Participants: React.FC = () => {
     });
 }, []);
 
-  // Charger les événements depuis le backend
-  useEffect(() => {
-    getEvents()
-      .then((data) => {
-        setEvents(data as Event[]);
-        if (!selectedEventId && (data as Event[]).length > 0) {
-          setSelectedEventId((data as Event[])[0].id);
-        }
-      })
-      .catch((err) => {
-        console.error('Erreur chargement events', err);
-      });
-  }, [selectedEventId]);
 
-  // Titre de l’événement sélectionné
-  const selectedEventName = useMemo(() => {
-    const ev = events.find((e) => e.id === selectedEventId);
-    return ev ? ev.name : 'Sélectionnez un événement';
-  }, [events, selectedEventId]);
-
-  // Ajouter manuellement (et créer un ticket côté backend)
-  const addParticipant = async () => {
+  // Ajouter manuellement
+  const addParticipant = () => {
     if (!form.nom || !form.prenom) {
       present({ message: 'Nom et prénom sont requis.', duration: 1800, color: 'warning' });
       return;
     }
-    if (!selectedEventId) {
-      present({ message: 'Choisis un événement avant d’ajouter un participant.', duration: 1800, color: 'warning' });
-      return;
-    }
-
-    const tempId = nextId++;
     const newParticipant: Participant = {
-      id: tempId,
+      id: nextId++,
       ...form,
-      qrCode: `${form.nom}-${Date.now()}` // remplacé ensuite si le backend renvoie un token
+      qrCode: `${form.nom}-${Date.now()}`
     };
-
-    // On l’ajoute tout de suite côté front
     setParticipants(prev => [...prev, newParticipant]);
     setForm({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
-    present({ message: 'Participant ajouté (enregistrement en cours...)', duration: 1200, color: 'success' });
-
-    // Appel au backend pour créer le ticket
-    try {
-      const payload = {
-        user_name: `${form.prenom} ${form.nom}`,
-        user_email: form.email,
-        // ajoute d’autres champs si ton backend en attend (status, etc.)
-      };
-
-      const created = await createTicket(selectedEventId, payload);
-      const token =
-        (created as any).qr_code_token ||
-        (created as any).token ||
-        null;
-
-      if (token) {
-        // On met à jour le participant avec le vrai token backend
-        setParticipants(prev =>
-          prev.map(p => (p.id === tempId ? { ...p, qrCode: token } : p))
-        );
-      }
-    } catch (e) {
-      console.error('Erreur création ticket backend', e);
-      present({ message: "Erreur lors de l’enregistrement côté serveur", duration: 2000, color: 'danger' });
-    }
+    present({ message: 'Participant ajouté', duration: 1200, color: 'success' });
   };
 
   // Supprimer
@@ -174,17 +129,18 @@ const Participants: React.FC = () => {
         skipEmptyLines: true,
         complete: (results: Papa.ParseResult<Record<string, string>>) => {
           const imported: Participant[] = results.data
-            .filter(row => row.nom && row.prenom)
+            .filter(row => row.nom && row.prenom) // simple filtrage
             .map(row => ({
               id: nextId++,
               nom: (row.nom || '').trim(),
               prenom: (row.prenom || '').trim(),
-              promo: (row.promo || row.annee || '').trim(),
+              promo: (row.promo || row.annee || '').trim(), // compat léger
               email: (row.email || '').trim(),
               tarif: (row.tarif || '').trim(),
               qrCode: `${row.nom}-${Date.now()}`
             }));
           setParticipants(prev => [...prev, ...imported]);
+          // Reset input pour pouvoir réimporter le même fichier
           e.currentTarget.value = '';
           present({ message: `${imported.length} lignes importées`, duration: 1500, color: 'success' });
         }
@@ -199,7 +155,7 @@ const Participants: React.FC = () => {
 
   // Mettre à jour inline (seulement si en édition)
   const updateParticipant = (id: number, field: keyof Participant, value: string) => {
-    if (editingId !== id) return;
+    if (editingId !== id) return; // verrouillé tant que pas en mode édition
     setParticipants(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)));
   };
 
@@ -224,7 +180,7 @@ const Participants: React.FC = () => {
                 }}
                 interface="popover"
               >
-                {associations.map(a => (
+                {Object.keys(eventsByAssociation).map(a => (
                   <IonSelectOption key={a} value={a}>{a}</IonSelectOption>
                 ))}
               </IonSelect>
@@ -233,15 +189,13 @@ const Participants: React.FC = () => {
             <IonItem lines="none" className="toolbar-selects">
               <IonLabel position="stacked" className="toolbar-label">Événement</IonLabel>
               <IonSelect
-                value={selectedEventId ?? undefined}
+                value={selectedEvent}
                 placeholder="Choisir un événement"
                 interface="popover"
-                onIonChange={e => setSelectedEventId(e.detail.value as number)}
+                onIonChange={e => setSelectedEvent(e.detail.value!)}
               >
-                {events.map(ev => (
-                  <IonSelectOption key={ev.id} value={ev.id}>
-                    {ev.name}
-                  </IonSelectOption>
+                {availableEvents.map(ev => (
+                  <IonSelectOption key={ev} value={ev}>{ev}</IonSelectOption>
                 ))}
               </IonSelect>
             </IonItem>
@@ -253,7 +207,7 @@ const Participants: React.FC = () => {
         {/* Titre de la page / nom de l’événement */}
         <div className="event-title-wrap">
           <IonText color="dark">
-            <h1 className="event-title">{selectedEventName}</h1>
+            <h1 className="event-title">{selectedEvent || 'Sélectionnez un événement'}</h1>
           </IonText>
         </div>
 
@@ -342,6 +296,7 @@ const Participants: React.FC = () => {
               <IonText>
                 <small>Entêtes attendues : <b>nom, prenom, promo, email, tarif</b></small>
               </IonText>
+              {/* ICI on affiche le statut du backend */}
               <IonText color={backendStatus === 'ok' ? 'success' : 'danger'}>
                 <small>Backend : {backendStatus}</small>
               </IonText>
@@ -352,58 +307,20 @@ const Participants: React.FC = () => {
         {/* Bloc 3 : Tableau fusionné (import + manuel) */}
         <IonCard className="block-card">
           <IonCardHeader>
-            <IonCardTitle>
-              {selectedEvent === 'Base de donnée'
-                ? 'Base de donnée des étudiants'
-                : 'Liste des participants'}
-            </IonCardTitle>
+            <IonCardTitle>Liste des participants</IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            {selectedEvent === 'Base de donnée' ? (
-              // ========= MODE BASE DE DONNÉE =========
-              dbLoading ? (
-                <IonText>Chargement...</IonText>
-              ) : dbError ? (
-                <IonText color="danger">{dbError}</IonText>
-              ) : dbStudents.length === 0 ? (
-                <IonText>Aucun étudiant dans la base.</IonText>
-              ) : (
-                <div className="table-wrapper">
-                  <IonGrid className="participants-table" fixed>
-                    <IonRow className="table-header">
-                      <IonCol>Nom</IonCol>
-                      <IonCol>Prénom</IonCol>
-                      <IonCol>Email</IonCol>
-                      <IonCol>Type</IonCol>
-                    </IonRow>
-
-                    {dbStudents.map((s, idx) => (
-                      <IonRow
-                        key={s.id}
-                        className={idx % 2 ? 'table-row odd' : 'table-row'}
-                      >
-                        <IonCol>{s.last_name}</IonCol>
-                        <IonCol>{s.first_name}</IonCol>
-                        <IonCol>{s.email}</IonCol>
-                        <IonCol>{s.is_external ? 'Extérieur' : 'Élève ENPC'}</IonCol>
-                      </IonRow>
-                    ))}
-                  </IonGrid>
-                </div>
-              )
-            ) : (
-              // ========= MODE PARTICIPANTS (COMME AVANT) =========
-              <div className="table-wrapper">
-                <IonGrid className="participants-table" fixed>
-                  <IonRow className="table-header">
-                    <IonCol>Nom</IonCol>
-                    <IonCol>Prénom</IonCol>
-                    <IonCol>Promo</IonCol>
-                    <IonCol>Email</IonCol>
-                    <IonCol className="col-tarif">Tarif</IonCol>
-                    <IonCol className="col-qr">QR</IonCol>
-                    <IonCol className="col-actions">Actions</IonCol>
-                  </IonRow>
+            <div className="table-wrapper">
+              <IonGrid className="participants-table" fixed>
+                <IonRow className="table-header">
+                  <IonCol>Nom</IonCol>
+                  <IonCol>Prénom</IonCol>
+                  <IonCol>Promo</IonCol>
+                  <IonCol>Email</IonCol>
+                  <IonCol className="col-tarif">Tarif</IonCol>
+                  <IonCol className="col-qr">QR</IonCol>
+                  <IonCol className="col-actions">Actions</IonCol>
+                </IonRow>
 
                 {participants.map((p, idx) => {
                   const locked = editingId !== p.id; // true => lecture seule
@@ -478,10 +395,10 @@ const Participants: React.FC = () => {
             </div>
           </IonCardContent>
         </IonCard>
-
       </IonContent>
     </IonPage>
   );
 };
 
 export default Participants;
+
