@@ -9,7 +9,7 @@ import {
 } from "@ionic/react";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import "./Scan.css";
-import { scanTicket } from "../api"; // 👈 on utilise l'API centralisée
+import { scanTicket } from "../api"; // ✅ appel backend centralisé
 
 type ScanStatus = "idle" | "success" | "error";
 
@@ -45,11 +45,11 @@ const Scan: React.FC = () => {
   };
 
   const handleScan = async (token: string) => {
-    console.log("QR scanné :", token); // 👈 debug visible dans la console
+    console.log("QR scanné :", token);
     if (isProcessing) return;
     setIsProcessing(true);
 
-    // évite de retraiter 10 fois le même QR d'affilée
+    // évite de retraiter le même QR en boucle
     if (lastToken === token && status !== "idle") {
       setIsProcessing(false);
       return;
