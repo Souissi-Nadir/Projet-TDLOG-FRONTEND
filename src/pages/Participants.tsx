@@ -1,5 +1,6 @@
 //test de la com avec le backend 
-import { getHealth } from '../api';
+import { getHealth, getStudents, Student } from '../api';
+
 
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -47,10 +48,11 @@ let nextId = 1;
 
 // -- Mock d’événements par asso (en attendant l’API) --
 const eventsByAssociation: Record<string, string[]> = {
-  'Association Alpha': ['Gala 2025', 'Afterwork Mars', 'Conférence IA'],
-  'Beta Events': ['Soirée Caritative', 'Hackathon Étudiant'],
-  'Gamma Group': ['Weekend Intégration', 'Forum Entreprises']
+  'Association Alpha': ['Base de donnée', 'Gala 2025', 'Afterwork Mars', 'Conférence IA'],
+  'Beta Events': ['Base de donnée', 'Soirée Caritative', 'Hackathon Étudiant'],
+  'Gamma Group': ['Base de donnée', 'Weekend Intégration', 'Forum Entreprises']
 };
+
 
 const getActiveAssociation = () =>
   localStorage.getItem('activeAssociation') || 'Association Alpha';
@@ -58,6 +60,11 @@ const getActiveAssociation = () =>
 const Participants: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [backendStatus, setBackendStatus] = useState<string>('chargement...'); //test backend
+  // Base de donnée "globale" (students du backend)
+  const [dbStudents, setDbStudents] = useState<Student[]>([]);
+  const [dbLoading, setDbLoading] = useState<boolean>(true);
+  const [dbError, setDbError] = useState<string | null>(null);
+
   const [form, setForm] = useState({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
   const [present] = useIonToast();
 
@@ -97,6 +104,20 @@ const Participants: React.FC = () => {
       setBackendStatus('erreur');
     });
 }, []);
+
+  // Charger la base de donnée des étudiants (table students du backend)
+  useEffect(() => {
+    getStudents()
+      .then((data) => {
+        setDbStudents(data);
+        setDbError(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        setDbError("Erreur lors du chargement de la base de donnée");
+      })
+      .finally(() => setDbLoading(false));
+  }, []);
 
 
   // Ajouter manuellement
@@ -304,97 +325,173 @@ const Participants: React.FC = () => {
           </IonCardContent>
         </IonCard>
         
-        {/* Bloc 3 : Tableau fusionné (import + manuel) */}
+        {/* Bloc 3 : soit base de donnée, soit participants de l'événement */}
         <IonCard className="block-card">
           <IonCardHeader>
-            <IonCardTitle>Liste des participants</IonCardTitle>
+            <IonCardTitle>
+              {selectedEvent === 'Base de donnée'
+                ? 'Base de donnée des étudiants'
+                : 'Liste des participants'}
+            </IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            <div className="table-wrapper">
-              <IonGrid className="participants-table" fixed>
-                <IonRow className="table-header">
-                  <IonCol>Nom</IonCol>
-                  <IonCol>Prénom</IonCol>
-                  <IonCol>Promo</IonCol>
-                  <IonCol>Email</IonCol>
-                  <IonCol className="col-tarif">Tarif</IonCol>
-                  <IonCol className="col-qr">QR</IonCol>
-                  <IonCol className="col-actions">Actions</IonCol>
-                </IonRow>
-
-                {participants.map((p, idx) => {
-                  const locked = editingId !== p.id; // true => lecture seule
-                  return (
-                    <IonRow key={p.id} className={idx % 2 ? 'table-row odd' : 'table-row'}>
-                      <IonCol>
-                        <IonInput
-                          value={p.nom}
-                          disabled={locked}
-                          className={locked ? 'locked' : ''}
-                          onIonChange={e => updateParticipant(p.id, 'nom', e.detail.value || '')}
-                        />
-                      </IonCol>
-                      <IonCol>
-                        <IonInput
-                          value={p.prenom}
-                          disabled={locked}
-                          className={locked ? 'locked' : ''}
-                          onIonChange={e => updateParticipant(p.id, 'prenom', e.detail.value || '')}
-                        />
-                      </IonCol>
-                      <IonCol>
-                        <IonInput
-                          value={p.promo}
-                          disabled={locked}
-                          className={locked ? 'locked' : ''}
-                          onIonChange={e => updateParticipant(p.id, 'promo', e.detail.value || '')}
-                        />
-                      </IonCol>
-                      <IonCol>
-                        <IonInput
-                          value={p.email}
-                          disabled={locked}
-                          className={locked ? 'locked' : ''}
-                          onIonChange={e => updateParticipant(p.id, 'email', e.detail.value || '')}
-                        />
-                      </IonCol>
-                      <IonCol className="col-tarif">
-                        <IonInput
-                          value={p.tarif}
-                          disabled={locked}
-                          className={locked ? 'locked' : ''}
-                          onIonChange={e => updateParticipant(p.id, 'tarif', e.detail.value || '')}
-                        />
-                      </IonCol>
-                      <IonCol className="col-qr">
-                        <div className="qr-wrap">
-                          <QRCodeCanvas value={p.qrCode || `${p.nom}-${p.id}`} size={56} />
-                        </div>
-                      </IonCol>
-                      <IonCol className="col-actions">
-                        {locked ? (
-                          <IonButton fill="clear" onClick={() => startEdit(p.id)} title="Modifier">
-                            <IonIcon icon={createOutline} />
-                          </IonButton>
-                        ) : (
-                          <IonButton fill="clear" color="medium" onClick={stopEdit} title="Terminer">
-                            Terminer
-                          </IonButton>
-                        )}
-                        <IonButton color="primary" fill="clear" onClick={() => sendMail(p)} title="Envoyer par mail">
-                          <IonIcon icon={mail} />
-                        </IonButton>
-                        <IonButton color="danger" fill="clear" onClick={() => deleteParticipant(p.id)} title="Supprimer">
-                          <IonIcon icon={trash} />
-                        </IonButton>
-                      </IonCol>
+            {selectedEvent === 'Base de donnée' ? (
+              // ========= MODE BASE DE DONNÉE =========
+              dbLoading ? (
+                <IonText>Chargement...</IonText>
+              ) : dbError ? (
+                <IonText color="danger">{dbError}</IonText>
+              ) : dbStudents.length === 0 ? (
+                <IonText>Aucun étudiant dans la base.</IonText>
+              ) : (
+                <div className="table-wrapper">
+                  <IonGrid className="participants-table" fixed>
+                    <IonRow className="table-header">
+                      <IonCol>Nom</IonCol>
+                      <IonCol>Prénom</IonCol>
+                      <IonCol>Email</IonCol>
+                      <IonCol>Type</IonCol>
                     </IonRow>
-                  );
-                })}
-              </IonGrid>
-            </div>
+
+                    {dbStudents.map((s, idx) => (
+                      <IonRow
+                        key={s.id}
+                        className={idx % 2 ? 'table-row odd' : 'table-row'}
+                      >
+                        <IonCol>{s.last_name}</IonCol>
+                        <IonCol>{s.first_name}</IonCol>
+                        <IonCol>{s.email}</IonCol>
+                        <IonCol>{s.is_external ? 'Extérieur' : 'Élève ENPC'}</IonCol>
+                      </IonRow>
+                    ))}
+                  </IonGrid>
+                </div>
+              )
+            ) : (
+              // ========= MODE PARTICIPANTS (COMME AVANT) =========
+              <div className="table-wrapper">
+                <IonGrid className="participants-table" fixed>
+                  <IonRow className="table-header">
+                    <IonCol>Nom</IonCol>
+                    <IonCol>Prénom</IonCol>
+                    <IonCol>Promo</IonCol>
+                    <IonCol>Email</IonCol>
+                    <IonCol className="col-tarif">Tarif</IonCol>
+                    <IonCol className="col-qr">QR</IonCol>
+                    <IonCol className="col-actions">Actions</IonCol>
+                  </IonRow>
+
+                  {participants.map((p, idx) => {
+                    const locked = editingId !== p.id; // true => lecture seule
+                    return (
+                      <IonRow
+                        key={p.id}
+                        className={idx % 2 ? 'table-row odd' : 'table-row'}
+                      >
+                        <IonCol>
+                          <IonInput
+                            value={p.nom}
+                            disabled={locked}
+                            className={locked ? 'locked' : ''}
+                            onIonChange={e =>
+                              updateParticipant(p.id, 'nom', e.detail.value || '')
+                            }
+                          />
+                        </IonCol>
+                        <IonCol>
+                          <IonInput
+                            value={p.prenom}
+                            disabled={locked}
+                            className={locked ? 'locked' : ''}
+                            onIonChange={e =>
+                              updateParticipant(p.id, 'prenom', e.detail.value || '')
+                            }
+                          />
+                        </IonCol>
+                        <IonCol>
+                          <IonInput
+                            value={p.promo}
+                            disabled={locked}
+                            className={locked ? 'locked' : ''}
+                            onIonChange={e =>
+                              updateParticipant(p.id, 'promo', e.detail.value || '')
+                            }
+                          />
+                        </IonCol>
+                        <IonCol>
+                          <IonInput
+                            value={p.email}
+                            disabled={locked}
+                            className={locked ? 'locked' : ''}
+                            onIonChange={e =>
+                              updateParticipant(p.id, 'email', e.detail.value || '')
+                            }
+                          />
+                        </IonCol>
+                        <IonCol className="col-tarif">
+                          <IonInput
+                            value={p.tarif}
+                            disabled={locked}
+                            className={locked ? 'locked' : ''}
+                            onIonChange={e =>
+                              updateParticipant(p.id, 'tarif', e.detail.value || '')
+                            }
+                          />
+                        </IonCol>
+                        <IonCol className="col-qr">
+                          <div className="qr-wrap">
+                            <QRCodeCanvas
+                              value={p.qrCode || `${p.nom}-${p.id}`}
+                              size={56}
+                            />
+                          </div>
+                        </IonCol>
+                        <IonCol className="col-actions">
+                          {locked ? (
+                            <IonButton
+                              fill="clear"
+                              onClick={() => startEdit(p.id)}
+                              title="Modifier"
+                            >
+                              <IonIcon icon={createOutline} />
+                            </IonButton>
+                          ) : (
+                            <IonButton
+                              fill="clear"
+                              color="medium"
+                              onClick={stopEdit}
+                              title="Terminer"
+                            >
+                              Terminer
+                            </IonButton>
+                          )}
+                          <IonButton
+                            color="primary"
+                            fill="clear"
+                            onClick={() => sendMail(p)}
+                            title="Envoyer par mail"
+                          >
+                            <IonIcon icon={mail} />
+                          </IonButton>
+                          <IonButton
+                            color="danger"
+                            fill="clear"
+                            onClick={() => deleteParticipant(p.id)}
+                            title="Supprimer"
+                          >
+                            <IonIcon icon={trash} />
+                          </IonButton>
+                        </IonCol>
+                      </IonRow>
+                    );
+                  })}
+                </IonGrid>
+              </div>
+            )}
           </IonCardContent>
         </IonCard>
+
+        
       </IonContent>
     </IonPage>
   );
