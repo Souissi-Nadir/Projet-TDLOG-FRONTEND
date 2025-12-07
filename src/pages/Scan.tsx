@@ -6,10 +6,17 @@ import {
   IonTitle,
   IonContent,
   IonText,
+  IonButton,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  useIonRouter,
 } from "@ionic/react";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import "./Scan.css";
 import { scanTicket } from "../api"; // ✅ appel backend centralisé
+import { useIsAuthenticated } from "../hooks/useAuth";
 
 type ScanStatus = "idle" | "success" | "error";
 
@@ -23,9 +30,10 @@ interface ScanResult {
 }
 
 const Scan: React.FC = () => {
+  const isAuthenticated = useIsAuthenticated();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-
+  const router = useIonRouter();
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [message, setMessage] = useState("Place le QR code dans le cadre");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -89,6 +97,11 @@ const Scan: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      controlsRef.current?.stop();
+      return;
+    }
+
     const reader = new BrowserQRCodeReader();
 
     const startScanner = async () => {
@@ -120,7 +133,39 @@ const Scan: React.FC = () => {
     return () => {
       controlsRef.current?.stop();
     };
-  }, []);
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Scan</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <IonCard>
+            <IonCardHeader>
+              <IonCardTitle>Authentification requise</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <IonText>
+                <p>Connecte-toi pour pouvoir scanner et valider les tickets.</p>
+              </IonText>
+              <IonButton
+                className="ion-margin-top"
+                onClick={() =>
+                  router.push(`/login?redirect=${encodeURIComponent("/app/Scan")}`, "forward")
+                }
+              >
+                Aller à la page de connexion
+              </IonButton>
+            </IonCardContent>
+          </IonCard>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>

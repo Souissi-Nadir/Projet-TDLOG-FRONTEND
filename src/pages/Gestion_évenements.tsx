@@ -18,14 +18,16 @@ import {
   IonList,
   IonCard,
   IonCardContent,
-  IonText
+  IonCardHeader,
+  IonCardTitle,
+  IonText,
+  useIonRouter
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
 import './Gestion_évenements.css';
-import { getEvents, type Event } from '../api';  // IMPORT API
+import { getEvents, logout, type Event } from '../api';  // IMPORT API
+import { useIsAuthenticated } from '../hooks/useAuth';
 
-const isAuthenticated = true;
-const userName = "Jean Dupont";
 const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
 
 const getActiveAssociation = () =>
@@ -45,10 +47,10 @@ const eventActions = [
 
 const Gestion_évenements: React.FC = () => {
   const activeAssociation = getActiveAssociation();
-
-  // 👇 Nouveau state pour les événements et l’affichage
+  const isAuthenticated = useIsAuthenticated();
   const [events, setEvents] = useState<Event[]>([]);
   const [showEvents, setShowEvents] = useState(false);
+  const router = useIonRouter();
 
   const handleActionClick = async (action: string) => {
     console.log(`Action cliquée: ${action}.`);
@@ -66,6 +68,45 @@ const Gestion_évenements: React.FC = () => {
       console.log(`Redirection à implémenter pour: ${action}`);
     }
   };
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login", "root");
+  };
+
+  const userName = "Compte";
+
+  if (!isAuthenticated) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Gestion d'événements</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <IonCard>
+            <IonCardHeader>
+              <IonCardTitle>Authentification requise</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <IonText>
+                <p>Connecte-toi pour créer ou modifier des événements.</p>
+              </IonText>
+              <IonButton
+                className="ion-margin-top"
+                onClick={() =>
+                  router.push(`/login?redirect=${encodeURIComponent("/app/Gestion_évenements")}`, "forward")
+                }
+              >
+                Aller à la page de connexion
+              </IonButton>
+            </IonCardContent>
+          </IonCard>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>
@@ -95,7 +136,13 @@ const Gestion_évenements: React.FC = () => {
                 </IonSelect>
               </IonItem>
             ) : (
-              <IonButton routerLink="/login" fill="solid" color="primary">
+              <IonButton
+                fill="solid"
+                color="primary"
+                onClick={() =>
+                  router.push(`/login?redirect=${encodeURIComponent("/app/Gestion_évenements")}`, "forward")
+                }
+              >
                 Se connecter
               </IonButton>
             )}
@@ -103,7 +150,7 @@ const Gestion_évenements: React.FC = () => {
 
           <IonButtons slot="end">
             {isAuthenticated ? (
-              <IonButton onClick={() => console.log('Déconnexion cliquée')}>
+              <IonButton onClick={handleLogout}>
                 <IonIcon icon={logOutOutline} slot="start" color="danger" size="large" />
                 <IonIcon icon={personCircleOutline} size="large" />
               </IonButton>

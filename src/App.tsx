@@ -14,6 +14,7 @@ import { ellipse, camera, list, person } from 'ionicons/icons';
 import Participants from './pages/Participants';
 import Scan from './pages/Scan';
 import Gestion_évenements from './pages/Gestion_évenements';
+import Login from './pages/Login';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -47,43 +48,55 @@ import './theme/variables.css';
 
 setupIonicReact();
 
+const Tabs: React.FC = () => (
+  <IonTabs>
+    <IonRouterOutlet>
+      <Route exact path="/app/Participants">
+        <Participants />
+      </Route>
+      <Route exact path="/app/Scan">
+        <Scan />
+      </Route>
+      <Route path="/app/Gestion_évenements">
+        <Gestion_évenements />
+      </Route>
+      <Route exact path="/app">
+        <Redirect to="/app/Participants" />
+      </Route>
+    </IonRouterOutlet>
+    <IonTabBar slot="bottom">
+      <IonTabButton tab="Participants" href="/app/Participants">
+        <IonIcon aria-hidden="true" icon={list} />
+        <IonLabel>Participants</IonLabel>
+      </IonTabButton>
+      <IonTabButton tab="Scan" href="/app/Scan">
+        <IonIcon aria-hidden="true" icon={camera} />
+        <IonLabel>Scan</IonLabel>
+      </IonTabButton>
+      <IonTabButton tab="Gestion_évenements" href="/app/Gestion_évenements">
+        <IonIcon aria-hidden="true" icon={person} />
+        <IonLabel>Gestion d'évenements</IonLabel>
+      </IonTabButton>
+    </IonTabBar>
+  </IonTabs>
+);
+
 const App: React.FC = () => (
   <IonApp>
     <IonReactRouter>
-      <IonTabs>
-        <IonRouterOutlet>
-          <Route exact path="/Participants">
-            <Participants />
-          </Route>
-          <Route exact path="/Scan">
-            <Scan />
-          </Route>
-          <Route path="/Gestion_évenements">
-            <Gestion_évenements />
-          </Route>
-          <Route exact path="/">
-            <Redirect to="/Participants" />
-          </Route>
-        </IonRouterOutlet>
-        <IonTabBar slot="bottom">
-          <IonTabButton tab="Participants" href="/Participants">
-            <IonIcon aria-hidden="true" icon={list} />
-            <IonLabel>Participants</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="Scan" href="/Scan">
-            <IonIcon aria-hidden="true" icon={camera} />
-            <IonLabel>Scan</IonLabel>
-          </IonTabButton>
-          <IonTabButton tab="Gestion_évenements" href="/Gestion_évenements">
-            <IonIcon aria-hidden="true" icon={person} />
-            <IonLabel>Gestion d'évenements</IonLabel>
-          </IonTabButton>
-        </IonTabBar>
-      </IonTabs>
+      <IonRouterOutlet>
+        <Route exact path="/login">
+          <Login />
+        </Route>
+        <Route path="/app">
+          <Tabs />
+        </Route>
+        <Route exact path="/">
+          <Redirect to="/app/Participants" />
+        </Route>
+      </IonRouterOutlet>
     </IonReactRouter>
   </IonApp>
 );
 
 export default App;
-
-

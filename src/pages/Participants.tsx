@@ -27,12 +27,14 @@ import {
   IonCardContent,
   IonButtons,
   IonText,
-  useIonToast
+  useIonToast,
+  useIonRouter
 } from '@ionic/react';
 import { trash, mail, createOutline } from 'ionicons/icons';
 import Papa from 'papaparse';
 import { QRCodeCanvas } from 'qrcode.react';
 import './Participants.css';
+import { useIsAuthenticated } from '../hooks/useAuth';
 
 interface Participant {
   id: number;
@@ -58,6 +60,8 @@ const getActiveAssociation = () =>
   localStorage.getItem('activeAssociation') || 'Association Alpha';
 
 const Participants: React.FC = () => {
+  const isAuthenticated = useIsAuthenticated();
+  const router = useIonRouter();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [backendStatus, setBackendStatus] = useState<string>('chargement...'); //test backend
   // Base de donnée "globale" (students du backend)
@@ -94,19 +98,30 @@ const Participants: React.FC = () => {
   }, [availableEvents, selectedEvent]);
 
   useEffect(() => {
-  getHealth()
-    .then((data) => {
-      // si ton backend renvoie { "status": "ok" }
-      setBackendStatus(data.status || 'ok');
-    })
-    .catch((err) => {
-      console.error(err);
-      setBackendStatus('erreur');
-    });
-}, []);
+    if (!isAuthenticated) {
+      setBackendStatus('non connecté');
+      return;
+    }
+    getHealth()
+      .then((data) => {
+        // si ton backend renvoie { "status": "ok" }
+        setBackendStatus(data.status || 'ok');
+      })
+      .catch((err) => {
+        console.error(err);
+        setBackendStatus('erreur');
+      });
+  }, [isAuthenticated]);
 
   // Charger la base de donnée des étudiants (table students du backend)
   useEffect(() => {
+    if (!isAuthenticated) {
+      setDbStudents([]);
+      setDbError(null);
+      setDbLoading(false);
+      return;
+    }
+    setDbLoading(true);
     getStudents()
       .then((data) => {
         setDbStudents(data);
@@ -117,7 +132,7 @@ const Participants: React.FC = () => {
         setDbError("Erreur lors du chargement de la base de donnée");
       })
       .finally(() => setDbLoading(false));
-  }, []);
+  }, [isAuthenticated]);
 
 
   // Ajouter manuellement
@@ -182,6 +197,38 @@ const Participants: React.FC = () => {
 
   const startEdit = (id: number) => setEditingId(id);
   const stopEdit = () => setEditingId(null);
+
+  if (!isAuthenticated) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar className="participants-toolbar">
+            <IonTitle>Participants</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <IonCard>
+            <IonCardHeader>
+              <IonCardTitle>Authentification requise</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <IonText>
+                <p>Connecte-toi pour gérer les participants et accéder aux bases de données.</p>
+              </IonText>
+              <IonButton
+                className="ion-margin-top"
+                onClick={() =>
+                  router.push(`/login?redirect=${encodeURIComponent("/app/Participants")}`, "forward")
+                }
+              >
+                Aller à la page de connexion
+              </IonButton>
+            </IonCardContent>
+          </IonCard>
+        </IonContent>
+      </IonPage>
+    );
+  }
 
   return (
     <IonPage>
@@ -498,4 +545,3 @@ const Participants: React.FC = () => {
 };
 
 export default Participants;
-
