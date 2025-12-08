@@ -13,6 +13,7 @@ import {
   IonIcon,
   IonItem,
   IonLabel,
+  IonInput,
   IonSelect,
   IonSelectOption,
   IonList,
@@ -21,11 +22,15 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonText,
-  useIonRouter
+  IonModal,
+  IonTextarea,
+  IonDatetime,
+  useIonRouter,
+  useIonToast
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
 import './Gestion_évenements.css';
-import { getEvents, logout, type Event } from '../api';  // IMPORT API
+import { createEvent, getEvents, logout, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
 
 const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
@@ -50,19 +55,40 @@ const Gestion_évenements: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
   const [events, setEvents] = useState<Event[]>([]);
   const [showEvents, setShowEvents] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    description: '',
+    date: '',
+    location: ''
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [present] = useIonToast();
   const router = useIonRouter();
+
+  const normalizeDateValue = (value: string | string[] | null | undefined): string => {
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) return value[0] || '';
+    return '';
+  };
+
+  const loadEvents = async () => {
+    try {
+      const data = await getEvents();
+      setEvents(data);
+      setShowEvents(true);
+    } catch (e) {
+      console.error("Erreur lors du chargement des événements", e);
+      setCreateError("Impossible de charger les événements");
+    }
+  };
 
   const handleActionClick = async (action: string) => {
     console.log(`Action cliquée: ${action}.`);
 
     if (action === "Liste événements") {
-      try {
-        const data = await getEvents(); // appel backend
-        setEvents(data);
-        setShowEvents(true);
-      } catch (e) {
-        console.error("Erreur lors du chargement des événements", e);
-      }
+      await loadEvents();
     } else {
       // Pour les autres actions, tu feras plus tard
       console.log(`Redirection à implémenter pour: ${action}`);
@@ -72,6 +98,41 @@ const Gestion_évenements: React.FC = () => {
   const handleLogout = () => {
     logout();
     router.push("/login", "root");
+  };
+
+  const resetCreateForm = () => {
+    setCreateForm({
+      name: '',
+      description: '',
+      date: '',
+      location: ''
+    });
+    setCreateError(null);
+  };
+
+  const handleCreateSubmit = async () => {
+    if (!createForm.name || !createForm.date || !createForm.location) {
+      setCreateError('Nom, date et lieu sont requis.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await createEvent({
+        name: createForm.name,
+        description: createForm.description,
+        date: createForm.date,
+        location: createForm.location
+      });
+      present({ message: 'Événement créé', duration: 1500, color: 'success' });
+      setCreateModalOpen(false);
+      resetCreateForm();
+      await loadEvents();
+    } catch (e) {
+      console.error('Erreur lors de la création de l’événement', e);
+      setCreateError('Erreur lors de la création de l’événement.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const userName = "Compte";
@@ -169,6 +230,16 @@ const Gestion_évenements: React.FC = () => {
             </IonToolbar>
           </IonHeader>
 
+          <IonButton
+            expand="block"
+            onClick={() => {
+              resetCreateForm();
+              setCreateModalOpen(true);
+            }}
+          >
+            Créer un événement
+          </IonButton>
+
           {eventActions.map((action, index) => (
             <IonCard
               key={index}
@@ -203,6 +274,88 @@ const Gestion_évenements: React.FC = () => {
           ))}
         </IonList>
       </IonContent>
+
+      <IonModal
+        isOpen={createModalOpen}
+        onDidDismiss={() => {
+          setCreateModalOpen(false);
+          resetCreateForm();
+        }}
+      >
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Créer un événement</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <IonList>
+            <IonItem>
+              <IonLabel position="stacked">Nom</IonLabel>
+              <IonInput
+                value={createForm.name}
+                placeholder="Nom de l'événement"
+                onIonChange={e => setCreateForm(prev => ({ ...prev, name: e.detail.value || '' }))}
+              />
+            </IonItem>
+            <IonItem>
+              <IonLabel position="stacked">Date</IonLabel>
+              <IonDatetime
+                presentation="date-time"
+                value={createForm.date}
+                onIonChange={e =>
+                  setCreateForm(prev => ({
+                    ...prev,
+                    date: normalizeDateValue(e.detail.value)
+                  }))
+                }
+              />
+            </IonItem>
+            <IonItem>
+              <IonLabel position="stacked">Lieu</IonLabel>
+              <IonInput
+                value={createForm.location}
+                placeholder="Lieu"
+                onIonChange={e => setCreateForm(prev => ({ ...prev, location: e.detail.value || '' }))}
+              />
+            </IonItem>
+            <IonItem>
+              <IonLabel position="stacked">Description</IonLabel>
+              <IonTextarea
+                autoGrow
+                value={createForm.description}
+                placeholder="Description"
+                onIonChange={e => setCreateForm(prev => ({ ...prev, description: e.detail.value || '' }))}
+              />
+            </IonItem>
+          </IonList>
+
+          {createError && (
+            <IonText color="danger">
+              <p>{createError}</p>
+            </IonText>
+          )}
+
+          <div className="ion-margin-top">
+            <IonButton
+              expand="block"
+              onClick={handleCreateSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Création...' : 'Créer'}
+            </IonButton>
+            <IonButton
+              expand="block"
+              fill="clear"
+              onClick={() => {
+                setCreateModalOpen(false);
+                resetCreateForm();
+              }}
+            >
+              Annuler
+            </IonButton>
+          </div>
+        </IonContent>
+      </IonModal>
     </IonPage>
   );
 };

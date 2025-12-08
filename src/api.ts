@@ -86,7 +86,7 @@ export type Event = {
 };
 
 export async function getEvents() {
-  return request("/events");
+  return request("/events/");
 }
 
 export async function getEvent(eventId: number) {
@@ -94,7 +94,7 @@ export async function getEvent(eventId: number) {
 }
 
 export async function createEvent(data: any) {
-  return request("/events", {
+  return request("/events/", {
     method: "POST",
     body: JSON.stringify(data),
   });
