@@ -31,7 +31,7 @@ import {
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
 import './Gestion_évenements.css';
-import { createEvent, deleteEvent, getEvents, logout, type Event } from '../api';  // IMPORT API
+import { createEvent, deleteEvent, getEvents, logout, updateEvent, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
 
 const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
@@ -68,6 +68,8 @@ const Gestion_évenements: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteMode, setDeleteMode] = useState(false);
   const [deletingEventId, setDeletingEventId] = useState<number | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [eventPendingDeletion, setEventPendingDeletion] = useState<Event | null>(null);
   const [present] = useIonToast();
@@ -97,15 +99,24 @@ const Gestion_évenements: React.FC = () => {
       await loadEvents();
       setShowEvents(true);
       setDeleteMode(false);
+      setEditMode(false);
       setDeleteError(null);
     } else if (action === "Supprimer événement") {
       await loadEvents();
       setDeleteMode(true);
       setShowEvents(false);
+      setEditMode(false);
+      setDeleteError(null);
+    } else if (action === "Modifier événement") {
+      await loadEvents();
+      setEditMode(true);
+      setShowEvents(false);
+      setDeleteMode(false);
       setDeleteError(null);
     } else {
       // Pour les autres actions, tu feras plus tard
       console.log(`Redirection à implémenter pour: ${action}`);
+      setEditMode(false);
       setShowEvents(false);
       setDeleteMode(false);
       setDeleteError(null);
@@ -165,6 +176,31 @@ const Gestion_évenements: React.FC = () => {
     } finally {
       setDeletingEventId(null);
     }
+  };
+
+  const handleUpdateEvent = async (event: Event) => {
+    try {
+      // Assurez-vous que la fonction updateEvent existe dans votre api.ts
+      // et qu'une route correspondante (ex: PUT /events/{id}) existe dans le backend.
+      await updateEvent(event.id, {
+        name: event.name,
+        description: event.description,
+        date: event.date,
+        location: event.location,
+      });
+      present({ message: 'Événement mis à jour !', duration: 1500, color: 'success' });
+      setEditingEventId(null); // Quitte le mode édition pour cette ligne
+    } catch (e) {
+      console.error("Erreur lors de la mise à jour de l'événement", e);
+      present({ message: "Erreur lors de la mise à jour.", duration: 2000, color: 'danger' });
+    }
+  };
+
+  const handleInputChange = (id: number, field: keyof Event, value: string) => {
+    setEvents(
+      events.map((event) =>
+        event.id === id ? { ...event, [field]: value } : event
+      ));
   };
 
   const userName = "Compte";
@@ -268,6 +304,7 @@ const Gestion_évenements: React.FC = () => {
               resetCreateForm();
               setCreateModalOpen(true);
               setDeleteMode(false);
+              setEditMode(false);
               setShowEvents(false);
               setDeleteError(null);
             }}
@@ -313,6 +350,52 @@ const Gestion_évenements: React.FC = () => {
               </IonCardContent>
             </IonCard>
           ))}
+
+          {/* 👇 Affichage pour la modification des événements */}
+          {editMode && (
+            <IonCard>
+              <IonCardHeader>
+                <IonCardTitle>Modifier un événement</IonCardTitle>
+              </IonCardHeader>
+              <IonCardContent>
+                {events.length === 0 ? (
+                  <IonText>Aucun événement à modifier.</IonText>
+                ) : (
+                  <IonList>
+                    {events.map((event) => (
+                      <IonItem key={event.id}>
+                        {editingEventId === event.id ? (
+                          <>
+                            <IonInput
+                              label="Nom" labelPlacement="stacked"
+                              value={event.name}
+                              onIonChange={(e) => handleInputChange(event.id, 'name', e.detail.value!)}
+                            />
+                            <IonDatetime
+                              label="Date" labelPlacement="stacked"
+                              presentation="date-time"
+                              value={event.date}
+                              onIonChange={(e) => handleInputChange(event.id, 'date', normalizeDateValue(e.detail.value))}
+                            />
+                            <IonButton onClick={() => handleUpdateEvent(event)} slot="end">Sauvegarder</IonButton>
+                            <IonButton fill="clear" onClick={() => setEditingEventId(null)} slot="end">Annuler</IonButton>
+                          </>
+                        ) : (
+                          <>
+                            <IonLabel>
+                              <h2>{event.name}</h2>
+                              <p>{new Date(event.date).toLocaleString('fr-FR')} - {event.location}</p>
+                            </IonLabel>
+                            <IonButton fill="clear" onClick={() => setEditingEventId(event.id)} slot="end">Modifier</IonButton>
+                          </>
+                        )}
+                      </IonItem>
+                    ))}
+                  </IonList>
+                )}
+              </IonCardContent>
+            </IonCard>
+          )}
 
           {deleteMode && (
             <IonCard>
