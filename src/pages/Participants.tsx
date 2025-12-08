@@ -1,7 +1,5 @@
 //test de la com avec le backend 
-import { getHealth, getStudents, Student } from '../api';
-
-
+import { Event as BackendEvent, getEvents, getHealth, getStudents, Student } from '../api';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -48,17 +46,6 @@ interface Participant {
 
 let nextId = 1;
 
-// -- Mock d’événements par asso (en attendant l’API) --
-const eventsByAssociation: Record<string, string[]> = {
-  'Association Alpha': ['Base de donnée', 'Gala 2025', 'Afterwork Mars', 'Conférence IA'],
-  'Beta Events': ['Base de donnée', 'Soirée Caritative', 'Hackathon Étudiant'],
-  'Gamma Group': ['Base de donnée', 'Weekend Intégration', 'Forum Entreprises']
-};
-
-
-const getActiveAssociation = () =>
-  localStorage.getItem('activeAssociation') || 'Association Alpha';
-
 const Participants: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
   const router = useIonRouter();
@@ -73,29 +60,43 @@ const Participants: React.FC = () => {
   const [present] = useIonToast();
 
   // Bandeau événement
-  const [activeAssociation, setActiveAssociation] = useState<string>(getActiveAssociation());
-  const availableEvents = useMemo(
-    () => eventsByAssociation[activeAssociation] || [],
-    [activeAssociation]
+  const [events, setEvents] = useState<BackendEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState<boolean>(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const selectedEvent = useMemo(
+    () => events.find(ev => ev.id === selectedEventId) || null,
+    [events, selectedEventId]
   );
-  const [selectedEvent, setSelectedEvent] = useState<string>('');
+  const isDatabaseView = selectedEventId === null;
+  const selectedEventLabel = isDatabaseView
+    ? 'Base de donnée'
+    : selectedEvent?.name || 'Sélectionnez un événement';
 
   // Édition : ligne en cours d’édition (id) ou null
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Charger l’asso active depuis localStorage si elle change ailleurs
   useEffect(() => {
-    const onStorage = () => setActiveAssociation(getActiveAssociation());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  // Sélectionner le 1er événement par défaut si vide
-  useEffect(() => {
-    if (!selectedEvent && availableEvents.length > 0) {
-      setSelectedEvent(availableEvents[0]);
+    if (!isAuthenticated) {
+      setEvents([]);
+      setEventsError(null);
+      setEventsLoading(false);
+      setSelectedEventId(null);
+      return;
     }
-  }, [availableEvents, selectedEvent]);
+    setEventsLoading(true);
+    getEvents()
+      .then(data => {
+        setEvents(data);
+        setEventsError(null);
+        setSelectedEventId(prev => (prev === null && data.length > 0 ? data[0].id : prev));
+      })
+      .catch(err => {
+        console.error(err);
+        setEventsError('Erreur lors du chargement des événements');
+      })
+      .finally(() => setEventsLoading(false));
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -235,38 +236,40 @@ const Participants: React.FC = () => {
       <IonHeader>
         <IonToolbar className="participants-toolbar">
           <IonTitle>Participants</IonTitle>
-          {/* Bandeau : Asso + Sélecteur d’événement */}
+          {/* Bandeau : Sélecteur d’événement */}
           <IonButtons slot="end" className="participants-toolbar-right">
-            <IonItem lines="none" className="toolbar-selects">
-              <IonLabel position="stacked" className="toolbar-label">Association</IonLabel>
-              <IonSelect
-                value={activeAssociation}
-                onIonChange={e => {
-                  const v = e.detail.value!;
-                  setActiveAssociation(v);
-                  localStorage.setItem('activeAssociation', v);
-                }}
-                interface="popover"
-              >
-                {Object.keys(eventsByAssociation).map(a => (
-                  <IonSelectOption key={a} value={a}>{a}</IonSelectOption>
-                ))}
-              </IonSelect>
-            </IonItem>
-
             <IonItem lines="none" className="toolbar-selects">
               <IonLabel position="stacked" className="toolbar-label">Événement</IonLabel>
               <IonSelect
-                value={selectedEvent}
-                placeholder="Choisir un événement"
+                value={isDatabaseView ? 'database' : selectedEventId?.toString()}
+                placeholder={eventsLoading ? 'Chargement...' : 'Choisir un événement'}
                 interface="popover"
-                onIonChange={e => setSelectedEvent(e.detail.value!)}
+                disabled={eventsLoading}
+                onIonChange={e => {
+                  const value = e.detail.value;
+                  if (value === 'database') {
+                    setSelectedEventId(null);
+                    return;
+                  }
+                  const numericValue = Number(value);
+                  if (!Number.isNaN(numericValue)) {
+                    setSelectedEventId(numericValue);
+                  }
+                }}
               >
-                {availableEvents.map(ev => (
-                  <IonSelectOption key={ev} value={ev}>{ev}</IonSelectOption>
+                <IonSelectOption value="database">Base de donnée</IonSelectOption>
+                {events.map(ev => (
+                  <IonSelectOption key={ev.id} value={ev.id.toString()}>
+                    {ev.name}
+                  </IonSelectOption>
                 ))}
               </IonSelect>
             </IonItem>
+            {eventsError && (
+              <IonText color="danger" className="toolbar-error">
+                {eventsError}
+              </IonText>
+            )}
           </IonButtons>
         </IonToolbar>
       </IonHeader>
@@ -275,7 +278,7 @@ const Participants: React.FC = () => {
         {/* Titre de la page / nom de l’événement */}
         <div className="event-title-wrap">
           <IonText color="dark">
-            <h1 className="event-title">{selectedEvent || 'Sélectionnez un événement'}</h1>
+            <h1 className="event-title">{selectedEventLabel}</h1>
           </IonText>
         </div>
 
@@ -376,13 +379,13 @@ const Participants: React.FC = () => {
         <IonCard className="block-card">
           <IonCardHeader>
             <IonCardTitle>
-              {selectedEvent === 'Base de donnée'
+              {isDatabaseView
                 ? 'Base de donnée des étudiants'
                 : 'Liste des participants'}
             </IonCardTitle>
           </IonCardHeader>
           <IonCardContent>
-            {selectedEvent === 'Base de donnée' ? (
+            {isDatabaseView ? (
               // ========= MODE BASE DE DONNÉE =========
               dbLoading ? (
                 <IonText>Chargement...</IonText>
