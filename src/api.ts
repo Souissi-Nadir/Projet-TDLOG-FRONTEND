@@ -100,6 +100,13 @@ export async function createEvent(data: any) {
   });
 }
 
+export async function updateEvent(eventId: number, data: Partial<Omit<Event, 'id'>>) {
+  return request(`/events/${eventId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteEvent(eventId: number) {
   return request(`/events/${eventId}`, {
     method: "DELETE",

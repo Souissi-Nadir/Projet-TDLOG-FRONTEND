@@ -365,21 +365,36 @@ const Gestion_évenements: React.FC = () => {
                     {events.map((event) => (
                       <IonItem key={event.id}>
                         {editingEventId === event.id ? (
-                          <>
+                          <div style={{ width: '100%', padding: '10px 0' }}>
                             <IonInput
                               label="Nom" labelPlacement="stacked"
                               value={event.name}
                               onIonChange={(e) => handleInputChange(event.id, 'name', e.detail.value!)}
                             />
-                            <IonDatetime
-                              label="Date" labelPlacement="stacked"
-                              presentation="date-time"
-                              value={event.date}
-                              onIonChange={(e) => handleInputChange(event.id, 'date', normalizeDateValue(e.detail.value))}
+                            <IonInput
+                              label="Lieu"
+                              labelPlacement="stacked"
+                              value={event.location}
+                              onIonChange={(e) => handleInputChange(event.id, 'location', e.detail.value!)}
+                              className="ion-margin-top"
                             />
-                            <IonButton onClick={() => handleUpdateEvent(event)} slot="end">Sauvegarder</IonButton>
-                            <IonButton fill="clear" onClick={() => setEditingEventId(null)} slot="end">Annuler</IonButton>
-                          </>
+                            <IonTextarea
+                              label="Description"
+                              labelPlacement="stacked"
+                              value={event.description}
+                              onIonChange={(e) => handleInputChange(event.id, 'description', e.detail.value!)}
+                              className="ion-margin-top"
+                              autoGrow={true}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                              <IonButton onClick={() => handleUpdateEvent(event)}>
+                                Sauvegarder
+                              </IonButton>
+                              <IonButton fill="clear" onClick={() => setEditingEventId(null)}>
+                                Annuler
+                              </IonButton>
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <IonLabel>
