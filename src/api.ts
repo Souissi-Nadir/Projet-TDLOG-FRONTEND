@@ -100,6 +100,12 @@ export async function createEvent(data: any) {
   });
 }
 
+export async function deleteEvent(eventId: number) {
+  return request(`/events/${eventId}`, {
+    method: "DELETE",
+  });
+}
+
 // -------------------------
 //        TICKETS
 // -------------------------

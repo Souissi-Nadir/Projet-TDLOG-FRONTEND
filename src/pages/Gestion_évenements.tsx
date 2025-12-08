@@ -22,6 +22,7 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonText,
+  IonAlert,
   IonModal,
   IonTextarea,
   IonDatetime,
@@ -30,7 +31,7 @@ import {
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
 import './Gestion_évenements.css';
-import { createEvent, getEvents, logout, type Event } from '../api';  // IMPORT API
+import { createEvent, deleteEvent, getEvents, logout, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
 
 const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
@@ -55,6 +56,7 @@ const Gestion_évenements: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
   const [events, setEvents] = useState<Event[]>([]);
   const [showEvents, setShowEvents] = useState(false);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -64,6 +66,10 @@ const Gestion_évenements: React.FC = () => {
   });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [eventPendingDeletion, setEventPendingDeletion] = useState<Event | null>(null);
   const [present] = useIonToast();
   const router = useIonRouter();
 
@@ -77,10 +83,10 @@ const Gestion_évenements: React.FC = () => {
     try {
       const data = await getEvents();
       setEvents(data);
-      setShowEvents(true);
+      setEventsError(null);
     } catch (e) {
       console.error("Erreur lors du chargement des événements", e);
-      setCreateError("Impossible de charger les événements");
+      setEventsError("Impossible de charger les événements");
     }
   };
 
@@ -89,9 +95,20 @@ const Gestion_évenements: React.FC = () => {
 
     if (action === "Liste événements") {
       await loadEvents();
+      setShowEvents(true);
+      setDeleteMode(false);
+      setDeleteError(null);
+    } else if (action === "Supprimer événement") {
+      await loadEvents();
+      setDeleteMode(true);
+      setShowEvents(false);
+      setDeleteError(null);
     } else {
       // Pour les autres actions, tu feras plus tard
       console.log(`Redirection à implémenter pour: ${action}`);
+      setShowEvents(false);
+      setDeleteMode(false);
+      setDeleteError(null);
     }
   };
 
@@ -132,6 +149,21 @@ const Gestion_évenements: React.FC = () => {
       setCreateError('Erreur lors de la création de l’événement.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: number) => {
+    setDeleteError(null);
+    setDeletingEventId(eventId);
+    try {
+      await deleteEvent(eventId);
+      setEvents(prev => prev.filter(ev => ev.id !== eventId));
+      present({ message: "Événement supprimé", duration: 1500, color: "success" });
+    } catch (e) {
+      console.error("Erreur lors de la suppression de l’événement", e);
+      setDeleteError("Erreur lors de la suppression de l’événement.");
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -235,10 +267,19 @@ const Gestion_évenements: React.FC = () => {
             onClick={() => {
               resetCreateForm();
               setCreateModalOpen(true);
+              setDeleteMode(false);
+              setShowEvents(false);
+              setDeleteError(null);
             }}
           >
             Créer un événement
           </IonButton>
+
+          {eventsError && (
+            <IonText color="danger" className="ion-margin-top">
+              <p>{eventsError}</p>
+            </IonText>
+          )}
 
           {eventActions.map((action, index) => (
             <IonCard
@@ -272,8 +313,67 @@ const Gestion_évenements: React.FC = () => {
               </IonCardContent>
             </IonCard>
           ))}
+
+          {deleteMode && (
+            <IonCard>
+              <IonCardHeader>
+                <IonCardTitle>Supprimer un événement</IonCardTitle>
+              </IonCardHeader>
+              <IonCardContent>
+                {deleteError && (
+                  <IonText color="danger">
+                    <p>{deleteError}</p>
+                  </IonText>
+                )}
+                {events.length === 0 ? (
+                  <IonText>Aucun événement à afficher.</IonText>
+                ) : (
+                  events.map(event => (
+                    <IonItem key={event.id}>
+                      <IonLabel>
+                        <h2>{event.name}</h2>
+                        <p>{event.date} — {event.location}</p>
+                      </IonLabel>
+                    <IonButton
+                      slot="end"
+                      color="danger"
+                      onClick={() => setEventPendingDeletion(event)}
+                      disabled={deletingEventId === event.id}
+                    >
+                      {deletingEventId === event.id ? 'Suppression...' : "Supprimer l'événement"}
+                    </IonButton>
+                    </IonItem>
+                  ))
+                )}
+              </IonCardContent>
+            </IonCard>
+          )}
         </IonList>
       </IonContent>
+
+      <IonAlert
+        isOpen={Boolean(eventPendingDeletion)}
+        header="Supprimer l'événement"
+        message={`Voulez-vous vraiment supprimer "${eventPendingDeletion?.name || ''}" ?`}
+        buttons={[
+          {
+            text: 'Non',
+            role: 'cancel',
+            handler: () => setEventPendingDeletion(null)
+          },
+          {
+            text: 'Oui',
+            handler: () => {
+              const eventId = eventPendingDeletion?.id;
+              setEventPendingDeletion(null);
+              if (eventId != null) {
+                handleDeleteEvent(eventId);
+              }
+            }
+          }
+        ]}
+        onDidDismiss={() => setEventPendingDeletion(null)}
+      />
 
       <IonModal
         isOpen={createModalOpen}
