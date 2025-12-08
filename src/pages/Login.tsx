@@ -12,7 +12,7 @@ import {
   useIonRouter,
   useIonToast,
 } from "@ionic/react";
-import { useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { login } from "../api";
 
@@ -61,35 +61,47 @@ const Login: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
-        <IonText>
-          <p>Connecte-toi avec ton compte administrateur TDLOG.</p>
-        </IonText>
+        <form
+          onSubmit={(event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            handleSubmit();
+          }}
+        >
+          <IonText>
+            <p>Connecte-toi avec ton compte administrateur TDLOG.</p>
+          </IonText>
 
-        <IonItem>
-          <IonLabel position="stacked">Email</IonLabel>
-          <IonInput
-            type="email"
-            value={email}
-            onIonChange={(e) => setEmail(e.detail.value || "")}
-            placeholder="admin@tdlog.local"
+          <IonItem>
+            <IonLabel position="stacked">Email</IonLabel>
+            <IonInput
+              type="email"
+              value={email}
+              onIonChange={(e) => setEmail(e.detail.value || "")}
+              placeholder="admin@tdlog.local"
+              disabled={isLoading}
+            />
+          </IonItem>
+
+          <IonItem>
+            <IonLabel position="stacked">Mot de passe</IonLabel>
+            <IonInput
+              type="password"
+              value={password}
+              onIonChange={(e) => setPassword(e.detail.value || "")}
+              placeholder="Mot de passe"
+              disabled={isLoading}
+            />
+          </IonItem>
+
+          <IonButton
+            type="submit"
+            expand="block"
             disabled={isLoading}
-          />
-        </IonItem>
-
-        <IonItem>
-          <IonLabel position="stacked">Mot de passe</IonLabel>
-          <IonInput
-            type="password"
-            value={password}
-            onIonChange={(e) => setPassword(e.detail.value || "")}
-            placeholder="Mot de passe"
-            disabled={isLoading}
-          />
-        </IonItem>
-
-        <IonButton expand="block" onClick={handleSubmit} disabled={isLoading} className="ion-margin-top">
-          {isLoading ? "Connexion..." : "Se connecter"}
-        </IonButton>
+            className="ion-margin-top"
+          >
+            {isLoading ? "Connexion..." : "Se connecter"}
+          </IonButton>
+        </form>
       </IonContent>
     </IonPage>
   );
