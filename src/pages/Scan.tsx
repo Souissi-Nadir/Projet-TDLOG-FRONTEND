@@ -11,6 +11,7 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
+  IonAlert,
   useIonRouter,
 } from "@ionic/react";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
@@ -38,6 +39,8 @@ const Scan: React.FC = () => {
   const [message, setMessage] = useState("Place le QR code dans le cadre");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastToken, setLastToken] = useState<string | null>(null);
+  const [modalInfo, setModalInfo] = useState<{ name: string }>({ name: "" });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // --- Appel au backend via api.ts ---
   const checkAndMarkTicket = async (
@@ -76,6 +79,10 @@ const Scan: React.FC = () => {
           ? `Présence enregistrée pour ${data.user_name} ✅`
           : "Présence enregistrée ✅"
       );
+      setModalInfo({
+        name: data.user_name || "Participant confirmé",
+      });
+      setIsModalOpen(true);
     } else {
       if (data.reason === "already_scanned") {
         setStatus("error");
@@ -177,6 +184,9 @@ const Scan: React.FC = () => {
 
       <IonContent className={`scan-content scan-status-${status}`}>
         <div className="scan-container">
+          <IonText className="scan-extra-text">
+            <p>Scanner un QR code svp</p>
+          </IonText>
           <div className="scan-frame-wrapper">
             <div className="scan-frame">
               <video
@@ -197,6 +207,19 @@ const Scan: React.FC = () => {
           </div>
         </div>
       </IonContent>
+
+      <IonAlert
+        isOpen={isModalOpen}
+        header="Scan confirmé"
+        message={modalInfo.name}
+        buttons={[
+          {
+            text: "Fermer",
+            handler: () => setIsModalOpen(false),
+          },
+        ]}
+        onDidDismiss={() => setIsModalOpen(false)}
+      />
     </IonPage>
   );
 };
