@@ -1,7 +1,18 @@
 //test de la com avec le backend 
-import { Event as BackendEvent, getEvents, getHealth, getStudents, Student } from '../api';
+import {
+  Event as BackendEvent,
+  EventParticipant,
+  createEventParticipant,
+  deleteEventParticipant,
+  getEventParticipants,
+  getEvents,
+  getHealth,
+  getStudents,
+  Student,
+  updateEventParticipant,
+} from '../api';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   IonPage,
   IonHeader,
@@ -34,29 +45,33 @@ import { QRCodeCanvas } from 'qrcode.react';
 import './Participants.css';
 import { useIsAuthenticated } from '../hooks/useAuth';
 
-interface Participant {
-  id: number;
-  nom: string;
-  prenom: string;
+type ParticipantFormState = {
+  last_name: string;
+  first_name: string;
   promo: string;
   email: string;
   tarif: string;
-  qrCode?: string;
-}
-
-let nextId = 1;
+};
 
 const Participants: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
   const router = useIonRouter();
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<EventParticipant[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState<boolean>(false);
+  const [participantsError, setParticipantsError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<string>('chargement...'); //test backend
   // Base de donnée "globale" (students du backend)
   const [dbStudents, setDbStudents] = useState<Student[]>([]);
   const [dbLoading, setDbLoading] = useState<boolean>(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
-  const [form, setForm] = useState({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
+  const [form, setForm] = useState<ParticipantFormState>({
+    last_name: '',
+    first_name: '',
+    promo: '',
+    email: '',
+    tarif: '',
+  });
   const [present] = useIonToast();
 
   // Bandeau événement
@@ -135,69 +150,142 @@ const Participants: React.FC = () => {
       .finally(() => setDbLoading(false));
   }, [isAuthenticated]);
 
+  const refreshParticipants = useCallback(async () => {
+    if (!isAuthenticated || selectedEventId === null) {
+      setParticipants([]);
+      setParticipantsError(null);
+      setParticipantsLoading(false);
+      return;
+    }
+    setParticipantsLoading(true);
+    try {
+      const data = await getEventParticipants(selectedEventId);
+      setParticipants(data);
+      setParticipantsError(null);
+    } catch (err) {
+      console.error(err);
+      setParticipantsError('Erreur lors du chargement des participants');
+    } finally {
+      setParticipantsLoading(false);
+    }
+  }, [isAuthenticated, selectedEventId]);
+
+  useEffect(() => {
+    refreshParticipants();
+  }, [refreshParticipants]);
+
 
   // Ajouter manuellement
-  const addParticipant = () => {
-    if (!form.nom || !form.prenom) {
+  const addParticipant = async () => {
+    if (!selectedEventId) {
+      present({ message: 'Sélectionne un événement avant d\'ajouter un participant.', duration: 2000, color: 'warning' });
+      return;
+    }
+    if (!form.last_name || !form.first_name) {
       present({ message: 'Nom et prénom sont requis.', duration: 1800, color: 'warning' });
       return;
     }
-    const newParticipant: Participant = {
-      id: nextId++,
-      ...form,
-      qrCode: `${form.nom}-${Date.now()}`
-    };
-    setParticipants(prev => [...prev, newParticipant]);
-    setForm({ nom: '', prenom: '', promo: '', email: '', tarif: '' });
-    present({ message: 'Participant ajouté', duration: 1200, color: 'success' });
+    try {
+      await createEventParticipant(selectedEventId, {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        promo: form.promo || undefined,
+        email: form.email || undefined,
+        tarif: form.tarif || undefined,
+      });
+      setForm({ last_name: '', first_name: '', promo: '', email: '', tarif: '' });
+      await refreshParticipants();
+      present({ message: 'Participant ajouté', duration: 1200, color: 'success' });
+    } catch (err) {
+      console.error(err);
+      present({ message: 'Impossible d\'ajouter le participant', duration: 2000, color: 'danger' });
+    }
   };
 
   // Supprimer
-  const deleteParticipant = (id: number) => {
-    setParticipants(prev => prev.filter(p => p.id !== id));
-    if (editingId === id) setEditingId(null);
+  const deleteParticipantLocal = async (id: number) => {
+    if (!selectedEventId) return;
+    try {
+      await deleteEventParticipant(selectedEventId, id);
+      if (editingId === id) setEditingId(null);
+      await refreshParticipants();
+      present({ message: 'Participant supprimé', duration: 1200, color: 'success' });
+    } catch (err) {
+      console.error(err);
+      present({ message: 'Suppression impossible', duration: 2000, color: 'danger' });
+    }
   };
 
   // Import CSV
   const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedEventId) {
+      present({ message: 'Sélectionne un événement avant l\'import CSV.', duration: 2000, color: 'warning' });
+      return;
+    }
     if (e.target.files && e.target.files[0]) {
       Papa.parse(e.target.files[0], {
         header: true,
         skipEmptyLines: true,
-        complete: (results: Papa.ParseResult<Record<string, string>>) => {
-          const imported: Participant[] = results.data
-            .filter(row => row.nom && row.prenom) // simple filtrage
-            .map(row => ({
-              id: nextId++,
-              nom: (row.nom || '').trim(),
-              prenom: (row.prenom || '').trim(),
-              promo: (row.promo || row.annee || '').trim(), // compat léger
-              email: (row.email || '').trim(),
-              tarif: (row.tarif || '').trim(),
-              qrCode: `${row.nom}-${Date.now()}`
-            }));
-          setParticipants(prev => [...prev, ...imported]);
-          // Reset input pour pouvoir réimporter le même fichier
+        complete: async (results: Papa.ParseResult<Record<string, string>>) => {
+          const rows = results.data.filter(row => (row.nom || row.prenom));
+          let created = 0;
+          for (const row of rows) {
+            try {
+              await createEventParticipant(selectedEventId, {
+                last_name: (row.nom || '').trim() || 'Inconnu',
+                first_name: (row.prenom || '').trim() || 'Inconnu',
+                promo: (row.promo || row.annee || '').trim() || undefined,
+                email: (row.email || '').trim() || undefined,
+                tarif: (row.tarif || '').trim() || undefined,
+              });
+              created += 1;
+            } catch (err) {
+              console.error('Erreur lors de l\'import d\'une ligne', err);
+            }
+          }
+          await refreshParticipants();
           e.currentTarget.value = '';
-          present({ message: `${imported.length} lignes importées`, duration: 1500, color: 'success' });
+          present({ message: `${created} participants importés`, duration: 1800, color: 'success' });
         }
       });
     }
   };
 
   // Envoyer mail (placeholder)
-  const sendMail = (p: Participant) => {
-    alert(`Mail envoyé à ${p.email} avec le QR code: ${p.qrCode}`);
+  const sendMail = (p: EventParticipant) => {
+    alert(`Mail envoyé à ${p.email || 'contact inconnu'} avec le QR code: ${p.qr_code}`);
   };
 
+  type EditableParticipantField = 'last_name' | 'first_name' | 'promo' | 'email' | 'tarif';
+
   // Mettre à jour inline (seulement si en édition)
-  const updateParticipant = (id: number, field: keyof Participant, value: string) => {
+  const updateParticipantField = (id: number, field: EditableParticipantField, value: string) => {
     if (editingId !== id) return; // verrouillé tant que pas en mode édition
     setParticipants(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)));
   };
 
   const startEdit = (id: number) => setEditingId(id);
-  const stopEdit = () => setEditingId(null);
+  const stopEdit = async () => {
+    if (editingId === null) return;
+    const current = participants.find(p => p.id === editingId);
+    setEditingId(null);
+    if (!current || !selectedEventId) return;
+
+    try {
+      await updateEventParticipant(selectedEventId, current.id, {
+        last_name: current.last_name,
+        first_name: current.first_name,
+        promo: current.promo || undefined,
+        email: current.email || undefined,
+        tarif: current.tarif || undefined,
+      });
+      present({ message: 'Participant mis à jour', duration: 1200, color: 'success' });
+    } catch (err) {
+      console.error(err);
+      present({ message: 'Impossible de mettre à jour', duration: 2000, color: 'danger' });
+      refreshParticipants();
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -294,8 +382,8 @@ const Participants: React.FC = () => {
                   label="Nom"
                   labelPlacement="floating"
                   placeholder="Nom"
-                  value={form.nom}
-                  onIonChange={e => setForm({ ...form, nom: e.detail.value || '' })}
+                  value={form.last_name}
+                  onIonChange={e => setForm({ ...form, last_name: e.detail.value || '' })}
                 />
               </IonItem>
               <IonItem>
@@ -303,8 +391,8 @@ const Participants: React.FC = () => {
                   label="Prénom"
                   labelPlacement="floating"
                   placeholder="Prénom"
-                  value={form.prenom}
-                  onIonChange={e => setForm({ ...form, prenom: e.detail.value || '' })}
+                  value={form.first_name}
+                  onIonChange={e => setForm({ ...form, first_name: e.detail.value || '' })}
                 />
               </IonItem>
               <IonItem>
@@ -337,7 +425,7 @@ const Participants: React.FC = () => {
               </IonItem>
 
               <div className="form-actions">
-                <IonButton onClick={addParticipant}>Ajouter</IonButton>
+                <IonButton onClick={() => void addParticipant()}>Ajouter</IonButton>
               </div>
             </IonList>
           </IonCardContent>
@@ -417,8 +505,14 @@ const Participants: React.FC = () => {
                   </IonGrid>
                 </div>
               )
+            ) : participantsLoading ? (
+              <IonText>Chargement des participants...</IonText>
+            ) : participantsError ? (
+              <IonText color="danger">{participantsError}</IonText>
+            ) : participants.length === 0 ? (
+              <IonText>Aucun participant pour cet événement.</IonText>
             ) : (
-              // ========= MODE PARTICIPANTS (COMME AVANT) =========
+              // ========= MODE PARTICIPANTS =========
               <div className="table-wrapper">
                 <IonGrid className="participants-table" fixed>
                   <IonRow className="table-header">
@@ -440,58 +534,58 @@ const Participants: React.FC = () => {
                       >
                         <IonCol>
                           <IonInput
-                            value={p.nom}
+                            value={p.last_name}
                             disabled={locked}
                             className={locked ? 'locked' : ''}
                             onIonChange={e =>
-                              updateParticipant(p.id, 'nom', e.detail.value || '')
+                              updateParticipantField(p.id, 'last_name', e.detail.value || '')
                             }
                           />
                         </IonCol>
                         <IonCol>
                           <IonInput
-                            value={p.prenom}
+                            value={p.first_name}
                             disabled={locked}
                             className={locked ? 'locked' : ''}
                             onIonChange={e =>
-                              updateParticipant(p.id, 'prenom', e.detail.value || '')
+                              updateParticipantField(p.id, 'first_name', e.detail.value || '')
                             }
                           />
                         </IonCol>
                         <IonCol>
                           <IonInput
-                            value={p.promo}
+                            value={p.promo || ''}
                             disabled={locked}
                             className={locked ? 'locked' : ''}
                             onIonChange={e =>
-                              updateParticipant(p.id, 'promo', e.detail.value || '')
+                              updateParticipantField(p.id, 'promo', e.detail.value || '')
                             }
                           />
                         </IonCol>
                         <IonCol>
                           <IonInput
-                            value={p.email}
+                            value={p.email || ''}
                             disabled={locked}
                             className={locked ? 'locked' : ''}
                             onIonChange={e =>
-                              updateParticipant(p.id, 'email', e.detail.value || '')
+                              updateParticipantField(p.id, 'email', e.detail.value || '')
                             }
                           />
                         </IonCol>
                         <IonCol className="col-tarif">
                           <IonInput
-                            value={p.tarif}
+                            value={p.tarif || ''}
                             disabled={locked}
                             className={locked ? 'locked' : ''}
                             onIonChange={e =>
-                              updateParticipant(p.id, 'tarif', e.detail.value || '')
+                              updateParticipantField(p.id, 'tarif', e.detail.value || '')
                             }
                           />
                         </IonCol>
                         <IonCol className="col-qr">
                           <div className="qr-wrap">
                             <QRCodeCanvas
-                              value={p.qrCode || `${p.nom}-${p.id}`}
+                              value={p.qr_code}
                               size={56}
                             />
                           </div>
@@ -509,7 +603,7 @@ const Participants: React.FC = () => {
                             <IonButton
                               fill="clear"
                               color="medium"
-                              onClick={stopEdit}
+                              onClick={() => void stopEdit()}
                               title="Terminer"
                             >
                               Terminer
@@ -526,7 +620,7 @@ const Participants: React.FC = () => {
                           <IonButton
                             color="danger"
                             fill="clear"
-                            onClick={() => deleteParticipant(p.id)}
+                            onClick={() => void deleteParticipantLocal(p.id)}
                             title="Supprimer"
                           >
                             <IonIcon icon={trash} />

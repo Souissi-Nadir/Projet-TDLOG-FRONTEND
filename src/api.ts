@@ -107,6 +107,60 @@ export async function deleteEvent(eventId: number) {
 }
 
 // -------------------------
+//        PARTICIPANTS
+// -------------------------
+
+export type EventParticipant = {
+  id: number;
+  event_id: number;
+  first_name: string;
+  last_name: string;
+  promo?: string | null;
+  email?: string | null;
+  tarif?: string | null;
+  qr_code: string;
+};
+
+export type EventParticipantPayload = {
+  first_name: string;
+  last_name: string;
+  promo?: string;
+  email?: string;
+  tarif?: string;
+};
+
+export async function getEventParticipants(eventId: number) {
+  return request(`/events/${eventId}/participants/`);
+}
+
+export async function createEventParticipant(
+  eventId: number,
+  payload: EventParticipantPayload
+) {
+  return request(`/events/${eventId}/participants/`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateEventParticipant(
+  eventId: number,
+  participantId: number,
+  payload: Partial<EventParticipantPayload>
+) {
+  return request(`/events/${eventId}/participants/${participantId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteEventParticipant(eventId: number, participantId: number) {
+  return request(`/events/${eventId}/participants/${participantId}`, {
+    method: "DELETE",
+  });
+}
+
+// -------------------------
 //        TICKETS
 // -------------------------
 export async function getEventTickets(eventId: number) {
