@@ -593,10 +593,6 @@ const Participants: React.FC = () => {
               <IonText>
                 <small>Entêtes attendues : <b>nom, prenom, promo, email, tarif</b></small>
               </IonText>
-              {/* ICI on affiche le statut du backend */}
-              <IonText color={backendStatus === 'ok' ? 'success' : 'danger'}>
-                <small>Backend : {backendStatus}</small>
-              </IonText>
             </div>
           </IonCardContent>
         </IonCard>

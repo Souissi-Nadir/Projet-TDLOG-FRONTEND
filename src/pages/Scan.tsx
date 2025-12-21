@@ -39,8 +39,11 @@ const Scan: React.FC = () => {
   const [message, setMessage] = useState("Place le QR code dans le cadre");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastToken, setLastToken] = useState<string | null>(null);
-  const [modalInfo, setModalInfo] = useState<{ name: string }>({ name: "" });
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    open: boolean;
+    header: string;
+    message: string;
+  }>({ open: false, header: "", message: "" });
 
   // --- Appel au backend via api.ts ---
   const checkAndMarkTicket = async (
@@ -79,14 +82,22 @@ const Scan: React.FC = () => {
           ? `Présence enregistrée pour ${data.user_name} ✅`
           : "Présence enregistrée ✅"
       );
-      setModalInfo({
-        name: data.user_name || "Participant confirmé",
+      setAlertConfig({
+        open: true,
+        header: "Scan confirmé",
+        message: data.user_name || "Participant confirmé",
       });
-      setIsModalOpen(true);
     } else {
       if (data.reason === "already_scanned") {
         setStatus("error");
         setMessage("Le QR code a déjà été scanné");
+        setAlertConfig({
+          open: true,
+          header: "QR code déjà scanné",
+          message: data.user_name
+            ? `${data.user_name} a déjà été scanné`
+            : "Ce QR code a déjà été scanné.",
+        });
       } else if (data.reason === "ticket_not_found") {
         setStatus("error");
         setMessage("Ticket introuvable");
@@ -208,18 +219,23 @@ const Scan: React.FC = () => {
         </div>
       </IonContent>
 
-      <IonAlert
-        isOpen={isModalOpen}
-        header="Scan confirmé"
-        message={modalInfo.name}
-        buttons={[
-          {
-            text: "Fermer",
-            handler: () => setIsModalOpen(false),
-          },
-        ]}
-        onDidDismiss={() => setIsModalOpen(false)}
-      />
+      {alertConfig.open && (
+        <IonAlert
+          isOpen={alertConfig.open}
+          header={alertConfig.header}
+          message={alertConfig.message}
+          buttons={[
+            {
+              text: "Fermer",
+              handler: () =>
+                setAlertConfig(current => ({ ...current, open: false })),
+            },
+          ]}
+          onDidDismiss={() =>
+            setAlertConfig(current => ({ ...current, open: false }))
+          }
+        />
+      )}
     </IonPage>
   );
 };
