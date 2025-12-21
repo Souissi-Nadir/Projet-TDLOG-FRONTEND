@@ -4,12 +4,14 @@ import {
   EventParticipant,
   EventTicket,
   createEventParticipant,
+  createStudent,
   deleteEventParticipant,
   getEventParticipants,
   getEvents,
   getHealth,
   getEventTickets,
   getStudents,
+  searchStudents,
   Student,
   updateEventParticipant,
 } from '../api';
@@ -94,6 +96,12 @@ const Participants: React.FC = () => {
   const [dbStudents, setDbStudents] = useState<Student[]>([]);
   const [dbLoading, setDbLoading] = useState<boolean>(true);
   const [dbError, setDbError] = useState<string | null>(null);
+
+  // Autocomplétion étudiants
+  const [studentQuery, setStudentQuery] = useState<string>('');
+  const [studentOptions, setStudentOptions] = useState<Student[]>([]);
+  const [studentSearching, setStudentSearching] = useState<boolean>(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   const [form, setForm] = useState<ParticipantFormState>({
     last_name: '',
@@ -218,6 +226,62 @@ const Participants: React.FC = () => {
     refreshParticipants();
   }, [refreshParticipants]);
 
+  const fetchStudentOptions = useCallback(async (query: string) => {
+    if (!isAuthenticated) return;
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setStudentOptions([]);
+      return;
+    }
+    setStudentSearching(true);
+    try {
+      const res = await searchStudents(trimmed);
+      const sorted = [...res].sort((a, b) => {
+        const la = `${a.last_name} ${a.first_name}`.toLowerCase();
+        const lb = `${b.last_name} ${b.first_name}`.toLowerCase();
+        return la.localeCompare(lb);
+      });
+      setStudentOptions(sorted);
+    } catch (err) {
+      console.error(err);
+      setStudentOptions([]);
+    } finally {
+      setStudentSearching(false);
+    }
+  }, [isAuthenticated]);
+
+  const handleStudentQueryChange = (value: string) => {
+    setStudentQuery(value);
+    setSelectedStudent(null);
+    void fetchStudentOptions(value);
+  };
+
+  const handleSelectStudent = (student: Student) => {
+    setSelectedStudent(student);
+    setStudentQuery(`${student.last_name} ${student.first_name}`);
+    setForm(form => ({
+      ...form,
+      last_name: student.last_name,
+      first_name: student.first_name,
+      email: student.email,
+    }));
+  };
+
+  const ensureStudentExists = useCallback(async () => {
+    if (!isAuthenticated) return;
+    if (selectedStudent) return; // déjà dans la base
+    if (!form.first_name || !form.last_name || !form.email) return;
+    try {
+      await createStudent({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+      });
+    } catch (err) {
+      console.error('createStudent failed', err);
+    }
+  }, [form.first_name, form.last_name, form.email, isAuthenticated, selectedStudent]);
+
 
   // Ajouter manuellement
   const addParticipant = async () => {
@@ -230,6 +294,7 @@ const Participants: React.FC = () => {
       return;
     }
     try {
+      await ensureStudentExists();
       await createEventParticipant(selectedEventId, {
         first_name: form.first_name,
         last_name: form.last_name,
@@ -427,9 +492,38 @@ const Participants: React.FC = () => {
                   labelPlacement="floating"
                   placeholder="Nom"
                   value={form.last_name}
-                  onIonChange={e => setForm({ ...form, last_name: e.detail.value || '' })}
+                  onIonChange={e => {
+                    const v = e.detail.value || '';
+                    setForm({ ...form, last_name: v });
+                    setStudentQuery(v);
+                    handleStudentQueryChange(v);
+                  }}
                 />
               </IonItem>
+              <div className="autocomplete-hint">
+                {studentQuery
+                  ? studentSearching
+                    ? 'Recherche...'
+                    : studentOptions.length === 0
+                    ? 'Aucun résultat'
+                    : 'Clique sur un étudiant pour pré-remplir'
+                  : 'Tape un nom pour chercher dans la base'}
+              </div>
+              {studentOptions.length > 0 && (
+                <div className="autocomplete-list">
+                  {studentOptions.map(s => (
+                    <button
+                      type="button"
+                      key={s.id}
+                      className="autocomplete-item"
+                      onClick={() => handleSelectStudent(s)}
+                    >
+                      <div className="autocomplete-name">{s.last_name} {s.first_name}</div>
+                      <div className="autocomplete-email">{s.email}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
               <IonItem>
                 <IonInput
                   label="Prénom"
