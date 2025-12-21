@@ -4,6 +4,8 @@ import { clearAuthToken, getAuthToken, setAuthToken } from "./auth";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string;
 
+
+
 // Fonction générique pour les requêtes
 async function request(path: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -126,6 +128,8 @@ export type EventParticipant = {
   email?: string | null;
   tarif?: string | null;
   qr_code: string;
+  status?: string | null;
+  scanned_at?: string | null;
 };
 
 export type EventParticipantPayload = {
@@ -170,6 +174,16 @@ export async function deleteEventParticipant(eventId: number, participantId: num
 // -------------------------
 //        TICKETS
 // -------------------------
+export type EventTicket = {
+  id: number;
+  event_id: number;
+  user_email: string | null;
+  user_name: string;
+  qr_code_token: string;
+  status: string;
+  scanned_at: string | null;
+};
+
 export async function getEventTickets(eventId: number) {
   return request(`/events/${eventId}/tickets`);
 }
