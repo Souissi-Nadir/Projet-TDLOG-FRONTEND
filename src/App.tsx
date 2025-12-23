@@ -1,5 +1,6 @@
-import { Redirect, Route } from 'react-router-dom';
-import {
+import { Redirect, Route } from 'react-router-dom';//import pour navigation entre pages
+import { IonReactRouter } from '@ionic/react-router';
+import { //import de structure de l'app 
   IonApp,
   IonIcon,
   IonLabel,
@@ -9,8 +10,9 @@ import {
   IonTabs,
   setupIonicReact
 } from '@ionic/react';
-import { IonReactRouter } from '@ionic/react-router';
 import { ellipse, camera, list, person } from 'ionicons/icons';
+
+//on import les composants react des différentes pages
 import Participants from './pages/Participants';
 import Scan from './pages/Scan';
 import Gestion_évenements from './pages/Gestion_évenements';
@@ -43,13 +45,11 @@ import '@ionic/react/css/display.css';
 /* import '@ionic/react/css/palettes/dark.class.css'; */
 import '@ionic/react/css/palettes/dark.system.css';
 
-/* Theme variables */
-import './theme/variables.css';
 
-setupIonicReact();
+setupIonicReact(); //initialise ionic pour fonctionner avec React
 
-const Tabs: React.FC = () => (
-  <IonTabs>
+const Tabs: React.FC = () => ( //composant react de navigation interne qui def les onglets
+  <IonTabs> 
     <IonRouterOutlet>
       <Route exact path="/app/Participants">
         <Participants />
@@ -64,7 +64,7 @@ const Tabs: React.FC = () => (
         <Redirect to="/app/Participants" />
       </Route>
     </IonRouterOutlet>
-    <IonTabBar slot="bottom">
+    <IonTabBar slot="bottom">         
       <IonTabButton tab="Participants" href="/app/Participants">
         <IonIcon aria-hidden="true" icon={list} />
         <IonLabel>Participants</IonLabel>
@@ -81,7 +81,7 @@ const Tabs: React.FC = () => (
   </IonTabs>
 );
 
-const App: React.FC = () => (
+const App: React.FC = () => ( //composant react global de notre application :Il configure Ionic, le routing avec React Router et détermine quelles pages sont affichées selon l’URL avec le composant TABS.
   <IonApp>
     <IonReactRouter>
       <IonRouterOutlet>
