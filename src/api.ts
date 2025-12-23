@@ -1,12 +1,14 @@
-//PAGE QUI COMMUNIQUE AVEC LE FRONTEND, NE PAS MODIFIER SANS PARLER AVEC ARTHUR
+//---------PAGE QUI COMMUNIQUE BACK et FRONT-------//
 
+//Récupération des fonctions d'autorisations avec le token
 import { clearAuthToken, getAuthToken, setAuthToken } from "./auth";
 
+//URL en local
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL as string;
 
 
 
-// Fonction générique pour les requêtes
+// Fonction générique pour les requêtes : le moteur de tous les appels API
 async function request(path: string, options: RequestInit = {}) {
   const token = getAuthToken();
   const defaultHeaders: HeadersInit = {
@@ -14,10 +16,10 @@ async function request(path: string, options: RequestInit = {}) {
   };
 
   if (token) {
-    defaultHeaders["Authorization"] = `Bearer ${token}`;
+    defaultHeaders["Authorization"] = `Bearer ${token}`; //Ajoute l'autorisation si token JWT présent
   }
 
-  const res = await fetch(`${BACKEND_URL}${path}`, {
+  const res = await fetch(`${BACKEND_URL}${path}`, { //requete http
     ...options,
     headers: {
       ...defaultHeaders,
@@ -25,24 +27,25 @@ async function request(path: string, options: RequestInit = {}) {
     },
   });
 
-  if (res.status === 401) {
+  if (res.status === 401) { //token JWT invalide on déconnecte en supprimant le token
     clearAuthToken();
   }
 
-  if (!res.ok) {
+  if (!res.ok) { //requete a échoué
     const errorText = await res.text();
     throw new Error(`Erreur API ${res.status} : ${errorText}`);
   }
 
-  if (res.status === 204) {
+  if (res.status === 204) { //requete sans contenu
     return null;
   }
 
-  return res.json();
+  return res.json(); //sinon on renvoie l'objet json de la requete
 }
 
+// ON DEF TOUTES LES REQUETES UNE PAR UNE 
 // -------------------------
-//        HEALTH (verifie le bon fonctionnement)
+//        HEALTH (verifie la bonne question back front )
 // -------------------------
 export async function getHealth() {
   return request("/");
