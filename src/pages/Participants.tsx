@@ -44,8 +44,8 @@ import {
   useIonRouter
 } from '@ionic/react';
 import { trash, mail, createOutline } from 'ionicons/icons';
-import Papa from 'papaparse';
-import { QRCodeCanvas } from 'qrcode.react';
+import Papa from 'papaparse'; //lire des fichiers csv
+import { QRCodeCanvas } from 'qrcode.react'; //affiche un qrcode à partir du string associé
 import './Participants.css';
 import { useIsAuthenticated } from '../hooks/useAuth';
 
@@ -68,7 +68,7 @@ const statusLabel = (status?: string | null) => {
   }
 };
 
-const statusClass = (status?: string | null) => {
+const statusClass = (status?: string | null) => { //renvoie une classe css selon le statut
   switch ((status || '').toUpperCase()) {
     case 'SCANNED':
       return 'status-scanned';
@@ -79,13 +79,19 @@ const statusClass = (status?: string | null) => {
   }
 };
 
-const formatScanDate = (iso?: string | null) => {
+const formatScanDate = (iso?: string | null) => { //conversion d'une date iso en date lisible
   if (!iso) return null;
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? iso : date.toLocaleString();
 };
 
 const Participants: React.FC = () => {
+// - Permet de sélectionner un événement
+// - Ajouter / importer / éditer / supprimer des participants
+// - Afficher le QR code et le statut de scan (SCANNED / UNUSED)
+// - Mode spécial "Base de donnée" : afficher la table globale des étudiants
+
+  //------Création des variables d'état react-----//
   const isAuthenticated = useIsAuthenticated();
   const router = useIonRouter();
   const [participants, setParticipants] = useState<EventParticipant[]>([]);
@@ -129,6 +135,10 @@ const Participants: React.FC = () => {
   // Édition : ligne en cours d’édition (id) ou null
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  //--------Definition des useEffect--------
+
+  // Au login (isAuthenticated=true) : charge la liste des événements pour remplir le menu déroulant.
+  // Si aucun événement sélectionné, on sélectionne automatiquement le premier.
   useEffect(() => {
     if (!isAuthenticated) {
       setEvents([]);
@@ -151,6 +161,7 @@ const Participants: React.FC = () => {
       .finally(() => setEventsLoading(false));
   }, [isAuthenticated]);
 
+  // Vérifie que le backend répond (endpoint /health). Purement informatif pour tester au début.
   useEffect(() => {
     if (!isAuthenticated) {
       setBackendStatus('non connecté');
@@ -167,7 +178,7 @@ const Participants: React.FC = () => {
       });
   }, [isAuthenticated]);
 
-  // Charger la base de donnée des étudiants (table students du backend)
+  // Charger la base de donnée des étudiants pour l'affichage en base de donnée et l'autocomplétion
   useEffect(() => {
     if (!isAuthenticated) {
       setDbStudents([]);
@@ -188,6 +199,9 @@ const Participants: React.FC = () => {
       .finally(() => setDbLoading(false));
   }, [isAuthenticated]);
 
+  // Recharge les participants de l’événement sélectionné.
+  //on récupère aussi les tickets pour connaître le statut de scan (SCANNED/UNUSED) et la date scanned_at,
+  // puis on fusionne participant + ticket via le QR code.
   const refreshParticipants = useCallback(async () => {
     if (!isAuthenticated || selectedEventId === null) {
       setParticipants([]);
@@ -197,22 +211,22 @@ const Participants: React.FC = () => {
     }
     setParticipantsLoading(true);
     try {
-      const [data, tickets] = await Promise.all([
+      const [data, tickets] = await Promise.all([ //deux appels en parallèle (promise all plus rapide que l'un après l'autre)
         getEventParticipants(selectedEventId),
         getEventTickets(selectedEventId),
       ]);
 
-      const ticketByQr = new Map<string, EventTicket>();
-      tickets.forEach(t => ticketByQr.set(t.qr_code_token, t));
+      const ticketByQr = new Map<string, EventTicket>(); //creation d'une map pour retrouver un ticket en O(1) cf PRALG
+      tickets.forEach(t => ticketByQr.set(t.qr_code_token, t)); // on remplit la map des tickets
 
-      const merged = data.map(p => {
+      const merged = data.map(p => { //on parcourt chaque participant et on le fusionne avec son tickets et on ajoute un status
         const t = ticketByQr.get(p.qr_code);
         return t
           ? { ...p, status: t.status, scanned_at: t.scanned_at }
           : p;
       });
 
-      setParticipants(merged);
+      setParticipants(merged); //on met a jour la liste affichée
       setParticipantsError(null);
     } catch (err) {
       console.error(err);
@@ -226,6 +240,8 @@ const Participants: React.FC = () => {
     refreshParticipants();
   }, [refreshParticipants]);
 
+  // Autocomplétion : recherche côté backend (searchStudents) à chaque saisie de l'utilisateur (query),
+  // puis tri des résultats pour affichage.
   const fetchStudentOptions = useCallback(async (query: string) => {
     if (!isAuthenticated) return;
     const trimmed = query.trim();
@@ -235,13 +251,13 @@ const Participants: React.FC = () => {
     }
     setStudentSearching(true);
     try {
-      const res = await searchStudents(trimmed);
-      const sorted = [...res].sort((a, b) => {
+      const res = await searchStudents(trimmed); //renvoie la liste d'étudiants correspondant à la saisie
+      const sorted = [...res].sort((a, b) => { //on trie la liste
         const la = `${a.last_name} ${a.first_name}`.toLowerCase();
         const lb = `${b.last_name} ${b.first_name}`.toLowerCase();
         return la.localeCompare(lb);
       });
-      setStudentOptions(sorted);
+      setStudentOptions(sorted); // on met à jour les suggestions 
     } catch (err) {
       console.error(err);
       setStudentOptions([]);
@@ -250,13 +266,13 @@ const Participants: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  const handleStudentQueryChange = (value: string) => {
+  const handleStudentQueryChange = (value: string) => { //fonction appelée à chaque saisie dans le champ
     setStudentQuery(value);
     setSelectedStudent(null);
     void fetchStudentOptions(value);
   };
 
-  const handleSelectStudent = (student: Student) => {
+  const handleSelectStudent = (student: Student) => { //quand l'utilisateur choisit une suggestion
     setSelectedStudent(student);
     setStudentQuery(`${student.last_name} ${student.first_name}`);
     setForm(form => ({
@@ -267,6 +283,8 @@ const Participants: React.FC = () => {
     }));
   };
 
+  // Si l’étudiant saisi n’existe pas encore dans la base students, on le crée (silencieusement)
+  // avant de créer le participant dans l’événement.
   const ensureStudentExists = useCallback(async () => {
     if (!isAuthenticated) return;
     if (selectedStudent) return; // déjà dans la base
@@ -283,7 +301,7 @@ const Participants: React.FC = () => {
   }, [form.first_name, form.last_name, form.email, isAuthenticated, selectedStudent]);
 
 
-  // Ajouter manuellement
+  // Ajouter manuellement un participant
   const addParticipant = async () => {
     if (!selectedEventId) {
       present({ message: 'Sélectionne un événement avant d\'ajouter un participant.', duration: 2000, color: 'warning' });
@@ -294,15 +312,15 @@ const Participants: React.FC = () => {
       return;
     }
     try {
-      await ensureStudentExists();
-      await createEventParticipant(selectedEventId, {
+      await ensureStudentExists(); //si l'étudiant n'est pas dans la base globale on le crée
+      await createEventParticipant(selectedEventId, { // appel /POST du backend
         first_name: form.first_name,
         last_name: form.last_name,
         promo: form.promo || undefined,
         email: form.email || undefined,
         tarif: form.tarif || undefined,
       });
-      setForm({ last_name: '', first_name: '', promo: '', email: '', tarif: '' });
+      setForm({ last_name: '', first_name: '', promo: '', email: '', tarif: '' }); //reset du formulaire
       await refreshParticipants();
       present({ message: 'Participant ajouté', duration: 1200, color: 'success' });
     } catch (err) {
@@ -367,11 +385,12 @@ const Participants: React.FC = () => {
 
   type EditableParticipantField = 'last_name' | 'first_name' | 'promo' | 'email' | 'tarif';
 
-  // Mettre à jour inline (seulement si en édition)
+  // Edition inline des participants : les modifs sont locales pour une UI fluide puis synchronisées avec le backend
+  // fonction appelée quand l'utilisateur tape dans un champ
   const updateParticipantField = (id: number, field: EditableParticipantField, value: string) => {
     if (editingId !== id) return; // verrouillé tant que pas en mode édition
     setParticipants(prev => prev.map(p => (p.id === id ? { ...p, [field]: value } : p)));
-  };
+  }; //mise à jour locale uniquement rien n'est envoyé au backend
 
   const startEdit = (id: number) => setEditingId(id);
   const stopEdit = async () => {
@@ -381,7 +400,7 @@ const Participants: React.FC = () => {
     if (!current || !selectedEventId) return;
 
     try {
-      await updateEventParticipant(selectedEventId, current.id, {
+      await updateEventParticipant(selectedEventId, current.id, { //Sauvegarde backend
         last_name: current.last_name,
         first_name: current.first_name,
         promo: current.promo || undefined,
