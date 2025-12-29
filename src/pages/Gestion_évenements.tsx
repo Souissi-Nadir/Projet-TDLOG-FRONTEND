@@ -30,7 +30,7 @@ import {
   useIonToast
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
-import './Gestion_évenements.css';
+import './Gestion_evenements.css';
 import { createEvent, deleteEvent, getEvents, logout, updateEvent, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
 
