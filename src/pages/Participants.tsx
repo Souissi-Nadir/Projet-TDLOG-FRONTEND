@@ -201,7 +201,7 @@ const Participants: React.FC = () => {
 
   // Recharge les participants de l’événement sélectionné.
   //on récupère aussi les tickets pour connaître le statut de scan (SCANNED/UNUSED) et la date scanned_at,
-  // puis on fusionne participant + ticket via le QR code.
+  // puis on fusionne le statut du participant + ticket via le QR code qui est unique .
   const refreshParticipants = useCallback(async () => {
     if (!isAuthenticated || selectedEventId === null) {
       setParticipants([]);
