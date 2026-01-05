@@ -14,8 +14,6 @@ import {
   IonItem,
   IonLabel,
   IonInput,
-  IonSelect,
-  IonSelectOption,
   IonList,
   IonCard,
   IonCardContent,
@@ -31,18 +29,8 @@ import {
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
 import './Gestion_evenements.css';
-import { addEventAdmin, createEvent, deleteEvent, getEvents, logout, updateEvent, type Event } from '../api';  // IMPORT API
+import { addEventAdmin, createEvent, deleteEvent, getEvents, getMe, logout, updateEvent, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
-
-const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
-
-const getActiveAssociation = () =>
-  localStorage.getItem('activeAssociation') || 'Association Alpha';
-
-const setActiveAssociation = (value: string) => {
-  localStorage.setItem('activeAssociation', value);
-  window.dispatchEvent(new StorageEvent('storage', { key: 'activeAssociation', newValue: value }));
-};
 
 const eventActions = [
   "Liste événements",
@@ -52,7 +40,6 @@ const eventActions = [
 ];
 
 const Gestion_évenements: React.FC = () => {
-  const activeAssociation = getActiveAssociation();
   const isAuthenticated = useIsAuthenticated();
   const [events, setEvents] = useState<Event[]>([]);
   const [showEvents, setShowEvents] = useState(false);
@@ -76,11 +63,23 @@ const Gestion_évenements: React.FC = () => {
   const [adminRoleByEvent, setAdminRoleByEvent] = useState<Record<number, "OWNER" | "SCANNER_ONLY">>({});
   const [addingAdminForEventId, setAddingAdminForEventId] = useState<number | null>(null);
   const [present] = useIonToast();
+  const [userName, setUserName] = useState<string>("Compte");
   const router = useIonRouter();
   const forbiddenMessage = "Vous n'êtes pas administrateur de l'événement (nobod)";
 
   const isForbiddenError = (err: unknown) =>
     err instanceof Error && err.message.includes("403");
+
+  const formatUserName = (name?: string | null, email?: string): string => {
+    const cleaned = (name || "").trim();
+    if (cleaned) {
+      return cleaned
+        .split(/\s+/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+    }
+    return email || "Compte";
+  };
 
   const normalizeDateValue = (value: string | string[] | null | undefined): string => {
     if (typeof value === 'string') return value;
@@ -135,6 +134,16 @@ const Gestion_évenements: React.FC = () => {
     router.push("/login", "root");
   };
 
+  const loadCurrentUser = async () => {
+    try {
+      const user = await getMe();
+      setUserName(formatUserName(user.name, user.email));
+    } catch (e) {
+      console.error("Impossible de récupérer le profil", e);
+      setUserName("Compte");
+    }
+  };
+
   const resetCreateForm = () => {
     setCreateForm({
       name: '',
@@ -144,6 +153,20 @@ const Gestion_évenements: React.FC = () => {
     });
     setCreateError(null);
   };
+
+  // Charger le profil user pour afficher le nom dans le header
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      loadCurrentUser();
+    }
+  }, [isAuthenticated]);
+
+  // Charger le profil user pour afficher le nom dans le header
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      loadCurrentUser();
+    }
+  }, [isAuthenticated]);
 
   const handleCreateSubmit = async () => {
     if (!createForm.name || !createForm.date || !createForm.location) {
@@ -245,8 +268,6 @@ const Gestion_évenements: React.FC = () => {
       ));
   };
 
-  const userName = "Compte";
-
   if (!isAuthenticated) {
     return (
       <IonPage>
@@ -286,25 +307,19 @@ const Gestion_évenements: React.FC = () => {
           <IonButtons slot="start">
             {isAuthenticated ? (
               <IonItem lines="none" style={{'--padding-start': '0px', '--inner-padding-end': '0px'}}>
-                <IonLabel class="ion-text-wrap" style={{ marginRight: '10px' }}>
-                  <IonText color="dark">
-                    <p style={{ margin: '0', fontWeight: 'bold' }}>{userName}</p>
-                  </IonText>
-                </IonLabel>
-
-                <IonSelect
-                  value={activeAssociation}
-                  placeholder="Sélectionner"
-                  interface="popover"
-                  style={{ minWidth: '180px' }}
-                  onIonChange={e => setActiveAssociation(e.detail.value!)}
+                <IonLabel
+                  class="ion-text-wrap"
+                  style={{
+                    margin: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap'
+                  }}
                 >
-                  {userAssociations.map((association, index) => (
-                    <IonSelectOption key={index} value={association}>
-                      {association}
-                    </IonSelectOption>
-                  ))}
-                </IonSelect>
+                  <IonText color="dark">{userName}</IonText>
+                </IonLabel>
               </IonItem>
             ) : (
               <IonButton

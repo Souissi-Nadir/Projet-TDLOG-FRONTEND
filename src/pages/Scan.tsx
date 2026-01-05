@@ -34,11 +34,14 @@ const Scan: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const isLockedRef = useRef(false);
   const router = useIonRouter();
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [message, setMessage] = useState("Place le QR code dans le cadre");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastToken, setLastToken] = useState<string | null>(null);
+  const [lastTokenTime, setLastTokenTime] = useState<number>(0);
+  const [scanPaused, setScanPaused] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
     open: boolean;
     header: string;
@@ -60,17 +63,19 @@ const Scan: React.FC = () => {
 
   const handleScan = async (token: string) => {
     console.log("QR scanné :", token);
-    if (isProcessing) return;
-    setIsProcessing(true);
+    if (isLockedRef.current || isProcessing || scanPaused) return;
 
-    // évite de retraiter le même QR en boucle
-    if (lastToken === token && status !== "idle") {
-      setIsProcessing(false);
-      return;
+    isLockedRef.current = true; // évite plusieurs alertes tant que la précédente n'est pas fermée
+    const now = Date.now();
+    if (lastToken === token && now - lastTokenTime < 2000) {
+      isLockedRef.current = false;
+      return; // ignore same QR in a short window
     }
+    setIsProcessing(true);
 
     const data = await checkAndMarkTicket(token);
     setLastToken(token);
+    setLastTokenTime(now);
 
     if (!data) {
       setStatus("error");
@@ -87,6 +92,7 @@ const Scan: React.FC = () => {
         header: "Scan confirmé",
         message: data.user_name || "Participant confirmé",
       });
+      setScanPaused(true);
     } else {
       if (data.reason === "already_scanned") {
         setStatus("error");
@@ -98,6 +104,7 @@ const Scan: React.FC = () => {
             ? `${data.user_name} a déjà été scanné`
             : "Ce QR code a déjà été scanné.",
         });
+        setScanPaused(true);
       } else if (data.reason === "ticket_not_found") {
         setStatus("error");
         setMessage("Ticket introuvable");
@@ -110,6 +117,9 @@ const Scan: React.FC = () => {
     setTimeout(() => {
       setStatus("idle");
       setMessage("Place le QR code dans le cadre");
+      if (!scanPaused) {
+        isLockedRef.current = false;
+      }
       setIsProcessing(false);
     }, 1600);
   };
@@ -227,13 +237,20 @@ const Scan: React.FC = () => {
           buttons={[
             {
               text: "Fermer",
-              handler: () =>
-                setAlertConfig(current => ({ ...current, open: false })),
+              handler: () => {
+                setScanPaused(false);
+                isLockedRef.current = false;
+                setIsProcessing(false);
+                setAlertConfig(current => ({ ...current, open: false }));
+              },
             },
           ]}
-          onDidDismiss={() =>
-            setAlertConfig(current => ({ ...current, open: false }))
-          }
+          onDidDismiss={() => {
+            setScanPaused(false);
+            isLockedRef.current = false;
+            setIsProcessing(false);
+            setAlertConfig(current => ({ ...current, open: false }));
+          }}
         />
       )}
     </IonPage>

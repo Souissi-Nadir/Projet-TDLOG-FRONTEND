@@ -72,6 +72,10 @@ export type User = {
   is_superadmin: boolean;
 };
 
+export async function getMe(): Promise<User> {
+  return request("/auth/me");
+}
+
 export async function login(username: string, password: string): Promise<TokenResponse> {
   const data = await request("/auth/login", {
     method: "POST",
