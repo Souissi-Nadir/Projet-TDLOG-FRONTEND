@@ -31,7 +31,7 @@ import {
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
 import './Gestion_evenements.css';
-import { createEvent, deleteEvent, getEvents, logout, updateEvent, type Event } from '../api';  // IMPORT API
+import { addEventAdmin, createEvent, deleteEvent, getEvents, logout, updateEvent, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
 
 const userAssociations = ["Association Alpha", "Beta Events", "Gamma Group"];
@@ -72,8 +72,15 @@ const Gestion_évenements: React.FC = () => {
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [eventPendingDeletion, setEventPendingDeletion] = useState<Event | null>(null);
+  const [adminEmailByEvent, setAdminEmailByEvent] = useState<Record<number, string>>({});
+  const [adminRoleByEvent, setAdminRoleByEvent] = useState<Record<number, "OWNER" | "SCANNER_ONLY">>({});
+  const [addingAdminForEventId, setAddingAdminForEventId] = useState<number | null>(null);
   const [present] = useIonToast();
   const router = useIonRouter();
+  const forbiddenMessage = "Vous n'êtes pas administrateur de l'événement (nobod)";
+
+  const isForbiddenError = (err: unknown) =>
+    err instanceof Error && err.message.includes("403");
 
   const normalizeDateValue = (value: string | string[] | null | undefined): string => {
     if (typeof value === 'string') return value;
@@ -88,7 +95,7 @@ const Gestion_évenements: React.FC = () => {
       setEventsError(null);
     } catch (e) {
       console.error("Erreur lors du chargement des événements", e);
-      setEventsError("Impossible de charger les événements");
+      setEventsError(isForbiddenError(e) ? forbiddenMessage : "Impossible de charger les événements");
     }
   };
 
@@ -172,27 +179,62 @@ const Gestion_évenements: React.FC = () => {
       present({ message: "Événement supprimé", duration: 1500, color: "success" });
     } catch (e) {
       console.error("Erreur lors de la suppression de l’événement", e);
-      setDeleteError("Erreur lors de la suppression de l’événement.");
+      setDeleteError(isForbiddenError(e) ? forbiddenMessage : "Erreur lors de la suppression de l’événement.");
     } finally {
       setDeletingEventId(null);
     }
   };
 
   const handleUpdateEvent = async (event: Event) => {
+    if (!event.name || !event.location || !event.date) {
+      present({ message: "Nom, date et lieu sont requis.", duration: 2000, color: "warning" });
+      return;
+    }
+
     try {
-      // Assurez-vous que la fonction updateEvent existe dans votre api.ts
-      // et qu'une route correspondante (ex: PUT /events/{id}) existe dans le backend.
       await updateEvent(event.id, {
         name: event.name,
         description: event.description,
-        date: event.date,
+        date: new Date(event.date).toISOString(),
         location: event.location,
       });
       present({ message: 'Événement mis à jour !', duration: 1500, color: 'success' });
+      await loadEvents();
       setEditingEventId(null); // Quitte le mode édition pour cette ligne
     } catch (e) {
       console.error("Erreur lors de la mise à jour de l'événement", e);
-      present({ message: "Erreur lors de la mise à jour.", duration: 2000, color: 'danger' });
+      present({
+        message: isForbiddenError(e) ? forbiddenMessage : "Erreur lors de la mise à jour.",
+        duration: 2000,
+        color: 'danger'
+      });
+    }
+  };
+
+  const handleAddAdmin = async (eventId: number) => {
+    const email = adminEmailByEvent[eventId]?.trim() || "";
+    const role = adminRoleByEvent[eventId] || "SCANNER_ONLY";
+
+    if (!email) {
+      present({ message: "Email requis pour ajouter un admin.", duration: 1800, color: "warning" });
+      return;
+    }
+
+    try {
+      setAddingAdminForEventId(eventId);
+      await addEventAdmin(eventId, email, role);
+      present({ message: "Admin ajouté à l'événement", duration: 1500, color: "success" });
+      setAdminEmailByEvent(prev => ({ ...prev, [eventId]: "" }));
+      setAdminRoleByEvent(prev => ({ ...prev, [eventId]: "SCANNER_ONLY" }));
+    } catch (e) {
+      console.error("Erreur lors de l'ajout d'un admin", e);
+      present({
+        message: isForbiddenError(e) ? forbiddenMessage : "Impossible d'ajouter cet admin",
+        duration: 2200,
+        color: "danger",
+      });
+    } finally {
+      setAddingAdminForEventId(null);
     }
   };
 
@@ -363,7 +405,8 @@ const Gestion_évenements: React.FC = () => {
                 ) : (
                   <IonList>
                     {events.map((event) => (
-                      <IonItem key={event.id}>
+                      <React.Fragment key={event.id}>
+                      <IonItem>
                         {editingEventId === event.id ? (
                           <div style={{ width: '100%', padding: '10px 0' }}>
                             <IonInput
@@ -376,6 +419,18 @@ const Gestion_évenements: React.FC = () => {
                               labelPlacement="stacked"
                               value={event.location}
                               onIonChange={(e) => handleInputChange(event.id, 'location', e.detail.value!)}
+                              className="ion-margin-top"
+                            />
+                            <IonDatetime
+                              presentation="date-time"
+                              value={event.date}
+                              onIonChange={(e) =>
+                                handleInputChange(
+                                  event.id,
+                                  'date',
+                                  normalizeDateValue(e.detail.value)
+                                )
+                              }
                               className="ion-margin-top"
                             />
                             <IonTextarea
@@ -397,14 +452,55 @@ const Gestion_évenements: React.FC = () => {
                           </div>
                         ) : (
                           <>
-                            <IonLabel>
-                              <h2>{event.name}</h2>
-                              <p>{new Date(event.date).toLocaleString('fr-FR')} - {event.location}</p>
-                            </IonLabel>
+                          <IonLabel>
+                            <h2>{event.name}</h2>
+                            <p>{new Date(event.date).toLocaleString('fr-FR')} - {event.location}</p>
+                          </IonLabel>
                             <IonButton fill="clear" onClick={() => setEditingEventId(event.id)} slot="end">Modifier</IonButton>
                           </>
                         )}
                       </IonItem>
+                      {editingEventId === event.id && (
+                        <div style={{ padding: '10px 14px 20px', borderTop: '1px solid #e0e0e0' }}>
+                          <IonLabel>
+                            <h3 style={{ fontWeight: 'bold', marginBottom: '8px' }}>Ajouter un admin</h3>
+                          </IonLabel>
+                          <IonInput
+                            label="Email de l'admin"
+                            labelPlacement="stacked"
+                            value={adminEmailByEvent[event.id] || ''}
+                            onIonChange={(e) =>
+                              setAdminEmailByEvent(prev => ({ ...prev, [event.id]: e.detail.value || '' }))
+                            }
+                            placeholder="admin@example.com"
+                            className="ion-margin-bottom"
+                          />
+                          <IonSelect
+                            label="Rôle"
+                            labelPlacement="stacked"
+                            value={adminRoleByEvent[event.id] || 'SCANNER_ONLY'}
+                            onIonChange={(e) =>
+                              setAdminRoleByEvent(prev => ({
+                                ...prev,
+                                [event.id]: (e.detail.value as "OWNER" | "SCANNER_ONLY") || "SCANNER_ONLY",
+                              }))
+                            }
+                            interface="popover"
+                          >
+                            <IonSelectOption value="SCANNER_ONLY">Scanner uniquement</IonSelectOption>
+                            <IonSelectOption value="OWNER">Owner</IonSelectOption>
+                          </IonSelect>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                            <IonButton
+                              onClick={() => handleAddAdmin(event.id)}
+                              disabled={addingAdminForEventId === event.id}
+                            >
+                              {addingAdminForEventId === event.id ? 'Ajout...' : 'Ajouter un admin'}
+                            </IonButton>
+                          </div>
+                        </div>
+                      )}
+                      </React.Fragment>
                     ))}
                   </IonList>
                 )}

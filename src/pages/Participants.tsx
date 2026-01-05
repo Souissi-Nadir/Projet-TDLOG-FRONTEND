@@ -117,6 +117,10 @@ const Participants: React.FC = () => {
     tarif: '',
   });
   const [present] = useIonToast();
+  const forbiddenMessage = "Vous n'êtes pas administrateur de l'événement (nobod)";
+
+  const isForbiddenError = (err: unknown) =>
+    err instanceof Error && err.message.includes("403");
 
   // Bandeau événement
   const [events, setEvents] = useState<BackendEvent[]>([]);
@@ -230,7 +234,7 @@ const Participants: React.FC = () => {
       setParticipantsError(null);
     } catch (err) {
       console.error(err);
-      setParticipantsError('Erreur lors du chargement des participants');
+      setParticipantsError(isForbiddenError(err) ? forbiddenMessage : 'Erreur lors du chargement des participants');
     } finally {
       setParticipantsLoading(false);
     }
@@ -325,7 +329,11 @@ const Participants: React.FC = () => {
       present({ message: 'Participant ajouté', duration: 1200, color: 'success' });
     } catch (err) {
       console.error(err);
-      present({ message: 'Impossible d\'ajouter le participant', duration: 2000, color: 'danger' });
+      present({
+        message: isForbiddenError(err) ? forbiddenMessage : 'Impossible d\'ajouter le participant',
+        duration: 2000,
+        color: 'danger'
+      });
     }
   };
 
@@ -339,7 +347,11 @@ const Participants: React.FC = () => {
       present({ message: 'Participant supprimé', duration: 1200, color: 'success' });
     } catch (err) {
       console.error(err);
-      present({ message: 'Suppression impossible', duration: 2000, color: 'danger' });
+      present({
+        message: isForbiddenError(err) ? forbiddenMessage : 'Suppression impossible',
+        duration: 2000,
+        color: 'danger'
+      });
     }
   };
 
@@ -410,7 +422,11 @@ const Participants: React.FC = () => {
       present({ message: 'Participant mis à jour', duration: 1200, color: 'success' });
     } catch (err) {
       console.error(err);
-      present({ message: 'Impossible de mettre à jour', duration: 2000, color: 'danger' });
+      present({
+        message: isForbiddenError(err) ? forbiddenMessage : 'Impossible de mettre à jour',
+        duration: 2000,
+        color: 'danger'
+      });
       refreshParticipants();
     }
   };

@@ -59,6 +59,19 @@ export type TokenResponse = {
   token_type: string;
 };
 
+export type SignupPayload = {
+  email: string;
+  name?: string;
+  password: string;
+};
+
+export type User = {
+  id: number;
+  email: string;
+  name?: string | null;
+  is_superadmin: boolean;
+};
+
 export async function login(username: string, password: string): Promise<TokenResponse> {
   const data = await request("/auth/login", {
     method: "POST",
@@ -72,6 +85,13 @@ export async function login(username: string, password: string): Promise<TokenRe
   });
   setAuthToken(data.access_token);
   return data;
+}
+
+export async function signup(payload: SignupPayload): Promise<User> {
+  return request("/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function logout(): void {
@@ -88,6 +108,13 @@ export type Event = {
   description: string;
   date: string;
   location: string;
+};
+
+export type EventAdmin = {
+  user_id: number;
+  user_email: string;
+  user_name: string | null;
+  role: string;
 };
 
 export async function getEvents() {
@@ -115,6 +142,17 @@ export async function updateEvent(eventId: number, data: Partial<Omit<Event, 'id
 export async function deleteEvent(eventId: number) {
   return request(`/events/${eventId}`, {
     method: "DELETE",
+  });
+}
+
+export async function addEventAdmin(
+  eventId: number,
+  userEmail: string,
+  role: "OWNER" | "SCANNER_ONLY" = "SCANNER_ONLY"
+): Promise<EventAdmin> {
+  return request(`/events/${eventId}/admins/`, {
+    method: "POST",
+    body: JSON.stringify({ user_email: userEmail, role }),
   });
 }
 
