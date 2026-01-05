@@ -118,6 +118,7 @@ const Participants: React.FC = () => {
   });
   const [present] = useIonToast();
   const forbiddenMessage = "Vous n'êtes pas administrateur de l'événement (nobod)";
+  const [participantSearch, setParticipantSearch] = useState<string>('');
 
   const isForbiddenError = (err: unknown) =>
     err instanceof Error && err.message.includes("403");
@@ -135,6 +136,16 @@ const Participants: React.FC = () => {
   const selectedEventLabel = isDatabaseView
     ? 'Base de donnée'
     : selectedEvent?.name || 'Sélectionnez un événement';
+
+  const filteredParticipants = useMemo(() => {
+    const query = participantSearch.trim().toLowerCase();
+    if (!query) return participants;
+    return participants.filter((p) => {
+      const fullName = `${p.last_name} ${p.first_name}`.toLowerCase();
+      const email = (p.email || '').toLowerCase();
+      return fullName.includes(query) || email.includes(query);
+    });
+  }, [participants, participantSearch]);
 
   // Édition : ligne en cours d’édition (id) ou null
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -678,12 +689,16 @@ const Participants: React.FC = () => {
               <IonText>Chargement des participants...</IonText>
             ) : participantsError ? (
               <IonText color="danger">{participantsError}</IonText>
-            ) : participants.length === 0 ? (
-              <IonText>Aucun participant pour cet événement.</IonText>
             ) : (
               // ========= MODE PARTICIPANTS =========
               <>
                 <div className="table-actions">
+                  <IonInput
+                    placeholder="Rechercher (nom ou email)"
+                    value={participantSearch}
+                    onIonChange={(e) => setParticipantSearch(e.detail.value || '')}
+                    className="participant-search"
+                  />
                   <IonButton
                     size="small"
                     fill="outline"
@@ -693,7 +708,10 @@ const Participants: React.FC = () => {
                     Rafraîchir
                   </IonButton>
                 </div>
-                <div className="table-wrapper">
+                {filteredParticipants.length === 0 ? (
+                  <IonText>Aucun participant pour cet événement.</IonText>
+                ) : (
+                  <div className="table-wrapper">
                   <IonGrid className="participants-table" fixed>
                     <IonRow className="table-header">
                       <IonCol>Nom</IonCol>
@@ -706,7 +724,7 @@ const Participants: React.FC = () => {
                       <IonCol className="col-actions">Actions</IonCol>
                     </IonRow>
 
-                    {participants.map((p, idx) => {
+                    {filteredParticipants.map((p, idx) => {
                       const locked = editingId !== p.id; // true => lecture seule
                       return (
                         <IonRow
@@ -821,7 +839,8 @@ const Participants: React.FC = () => {
                       );
                     })}
                   </IonGrid>
-                </div>
+                  </div>
+                )}
               </>
             )}
           </IonCardContent>

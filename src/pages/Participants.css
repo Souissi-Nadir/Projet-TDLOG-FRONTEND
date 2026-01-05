@@ -137,6 +137,11 @@
   }
 }
 
+.autocomplete-hint,
+.autocomplete-list {
+  grid-column: 1 / -1;
+}
+
 /* ===========================
    Import CSV (bouton blanc)
    =========================== */
@@ -200,8 +205,13 @@
 
 .table-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin-bottom: 8px;
+}
+
+.participant-search {
+  flex: 1;
+  margin-right: 12px;
 }
 
 .participants-table {
