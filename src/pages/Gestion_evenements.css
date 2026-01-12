@@ -80,3 +80,31 @@
     color: var(--ion-color-dark, #222428) !important;
 }
 */
+
+/* Safety styles for IonDatetime calendar inside modals (ensure days are visible & clickable) */
+ion-datetime .datetime-calendar, ion-datetime .calendar {
+    color: var(--ion-text-color, #222) !important;
+}
+
+ion-datetime .calendar-day,
+ion-datetime .calendar-day .calendar-day-text,
+ion-datetime .calendar-day-inner {
+    color: var(--ion-text-color, #222) !important;
+    background: transparent !important;
+    pointer-events: auto !important;
+}
+
+/* ensure clickable area is visible */
+ion-datetime .calendar-day {
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* high contrast for selected day */
+ion-datetime .calendar-day.is-selected, ion-datetime .calendar-day.is-today {
+    background: var(--ion-color-primary, #3880ff) !important;
+    color: white !important;
+    border-radius: 6px;
+}

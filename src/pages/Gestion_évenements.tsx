@@ -24,10 +24,13 @@ import {
   IonModal,
   IonTextarea,
   IonDatetime,
+  IonSelect,
+  IonSelectOption,
   useIonRouter,
   useIonToast
 } from '@ionic/react';
 import { logOutOutline, personCircleOutline } from 'ionicons/icons';
+import { calendarOutline } from 'ionicons/icons';
 import './Gestion_evenements.css';
 import { addEventAdmin, createEvent, deleteEvent, getEvents, getMe, logout, updateEvent, type Event } from '../api';  // IMPORT API
 import { useIsAuthenticated } from '../hooks/useAuth';
@@ -57,6 +60,8 @@ const Gestion_évenements: React.FC = () => {
   const [deletingEventId, setDeletingEventId] = useState<number | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editingEventId, setEditingEventId] = useState<number | null>(null);
+  const [datePickerEventId, setDatePickerEventId] = useState<number | null>(null);
+  const [datePickerValue, setDatePickerValue] = useState<string>('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [eventPendingDeletion, setEventPendingDeletion] = useState<Event | null>(null);
   const [adminEmailByEvent, setAdminEmailByEvent] = useState<Record<number, string>>({});
@@ -94,6 +99,16 @@ const Gestion_évenements: React.FC = () => {
       return Number.isNaN(d.getTime()) ? value : d.toISOString();
     } catch {
       return value;
+    }
+  };
+
+  const isValidDateString = (value: string): boolean => {
+    if (!value) return false;
+    try {
+      const d = new Date(value);
+      return !Number.isNaN(d.getTime());
+    } catch {
+      return false;
     }
   };
 
@@ -225,22 +240,25 @@ const Gestion_évenements: React.FC = () => {
     }
 
     try {
+      // validate date
+      const d = new Date(event.date);
+      if (Number.isNaN(d.getTime())) {
+        present({ message: 'Date invalide', duration: 2000, color: 'warning' });
+        return;
+      }
       await updateEvent(event.id, {
         name: event.name,
         description: event.description,
-        date: new Date(event.date).toISOString(),
+        date: d.toISOString(),
         location: event.location,
       });
       present({ message: 'Événement mis à jour !', duration: 1500, color: 'success' });
       await loadEvents();
       setEditingEventId(null); // Quitte le mode édition pour cette ligne
-    } catch (e) {
+    } catch (e: any) {
       console.error("Erreur lors de la mise à jour de l'événement", e);
-      present({
-        message: isForbiddenError(e) ? forbiddenMessage : "Erreur lors de la mise à jour.",
-        duration: 2000,
-        color: 'danger'
-      });
+      const msg = isForbiddenError(e) ? forbiddenMessage : (e?.message || "Erreur lors de la mise à jour.");
+      present({ message: msg, duration: 3000, color: 'danger' });
     }
   };
 
@@ -446,18 +464,27 @@ const Gestion_évenements: React.FC = () => {
                               onIonChange={(e) => handleInputChange(event.id, 'location', e.detail.value!)}
                               className="ion-margin-top"
                             />
-                            <IonDatetime
-                              presentation="date-time"
-                              value={toIsoOrRaw(event.date)}
-                              onIonChange={(e) =>
-                                handleInputChange(
-                                  event.id,
-                                  'date',
-                                  normalizeDateValue(e.detail.value)
-                                )
-                              }
-                              className="ion-margin-top"
-                            />
+                            {/* Use plain text input for editing dates to avoid Ionic datetime overlay issues */}
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <IonInput
+                                label="Date (ISO)"
+                                labelPlacement="stacked"
+                                value={event.date}
+                                onIonChange={(e) => handleInputChange(event.id, 'date', e.detail.value || '')}
+                                className="ion-margin-top"
+                                style={{ flex: 1 }}
+                              />
+                              <IonButton
+                                fill="clear"
+                                onClick={() => {
+                                  setDatePickerEventId(event.id);
+                                  setDatePickerValue(event.date || '');
+                                }}
+                                title="Choisir une date"
+                              >
+                                <IonIcon icon={calendarOutline} />
+                              </IonButton>
+                            </div>
                             <IonTextarea
                               label="Description"
                               labelPlacement="stacked"
@@ -672,6 +699,33 @@ const Gestion_évenements: React.FC = () => {
             >
               Annuler
             </IonButton>
+          </div>
+        </IonContent>
+      </IonModal>
+      <IonModal isOpen={datePickerEventId !== null} onDidDismiss={() => setDatePickerEventId(null)}>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Choisir une date</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <IonDatetime
+            presentation="date-time"
+            value={toIsoOrRaw(datePickerValue)}
+            onIonChange={(e) => setDatePickerValue(normalizeDateValue(e.detail.value))}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+            <IonButton
+              onClick={() => {
+                if (datePickerEventId != null) {
+                  handleInputChange(datePickerEventId, 'date', datePickerValue || '');
+                }
+                setDatePickerEventId(null);
+              }}
+            >
+              OK
+            </IonButton>
+            <IonButton fill="clear" onClick={() => setDatePickerEventId(null)}>Annuler</IonButton>
           </div>
         </IonContent>
       </IonModal>
