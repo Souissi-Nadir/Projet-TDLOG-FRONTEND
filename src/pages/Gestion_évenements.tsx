@@ -87,6 +87,16 @@ const Gestion_évenements: React.FC = () => {
     return '';
   };
 
+  const toIsoOrRaw = (value: string): string => {
+    if (!value) return '';
+    try {
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? value : d.toISOString();
+    } catch {
+      return value;
+    }
+  };
+
   const loadEvents = async () => {
     try {
       const data = await getEvents();
@@ -438,7 +448,7 @@ const Gestion_évenements: React.FC = () => {
                             />
                             <IonDatetime
                               presentation="date-time"
-                              value={event.date}
+                              value={toIsoOrRaw(event.date)}
                               onIonChange={(e) =>
                                 handleInputChange(
                                   event.id,
