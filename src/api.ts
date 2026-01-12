@@ -216,6 +216,12 @@ export async function deleteEventParticipant(eventId: number, participantId: num
   });
 }
 
+export async function sendParticipantEmail(eventId: number, participantId: number) {
+  return request(`/events/${eventId}/participants/${participantId}/send-email`, {
+    method: "POST",
+  });
+}
+
 // -------------------------
 //        TICKETS
 // -------------------------

@@ -12,6 +12,7 @@ import {
   getEventTickets,
   getStudents,
   searchStudents,
+  sendParticipantEmail,
   Student,
   updateEventParticipant,
 } from '../api';
@@ -401,9 +402,20 @@ const Participants: React.FC = () => {
     }
   };
 
-  // Envoyer mail (placeholder)
-  const sendMail = (p: EventParticipant) => {
-    alert(`Mail envoyé à ${p.email || 'contact inconnu'} avec le QR code: ${p.qr_code}`);
+  // Envoyer mail (backend)
+  const sendMail = async (p: EventParticipant) => {
+    if (!selectedEventId) return;
+    if (!p.email) {
+      present({ message: "Email manquant pour ce participant", duration: 1800, color: "warning" });
+      return;
+    }
+    try {
+      await sendParticipantEmail(selectedEventId, p.id);
+      present({ message: `Email envoyé à ${p.email}`, duration: 1800, color: "success" });
+    } catch (err) {
+      console.error(err);
+      present({ message: "Envoi email impossible", duration: 2000, color: "danger" });
+    }
   };
 
   type EditableParticipantField = 'last_name' | 'first_name' | 'promo' | 'email' | 'tarif';
