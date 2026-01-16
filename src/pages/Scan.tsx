@@ -16,7 +16,7 @@ import {
 } from "@ionic/react";
 import { BrowserQRCodeReader, IScannerControls } from "@zxing/browser";
 import "./Scan.css";
-import { scanTicket } from "../api"; // ✅ appel backend centralisé
+import { scanTicket } from "../api"; //  appel backend centralisé
 import { useIsAuthenticated } from "../hooks/useAuth";
 
 type ScanStatus = "idle" | "success" | "error";
@@ -69,7 +69,7 @@ const Scan: React.FC = () => {
     const now = Date.now();
     if (lastToken === token && now - lastTokenTime < 2000) {
       isLockedRef.current = false;
-      return; // ignore same QR in a short window
+      return; // ignore les scans répétés dans un court laps de temps
     }
     setIsProcessing(true);
 

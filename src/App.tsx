@@ -18,15 +18,11 @@ import Scan from './pages/Scan';
 import Gestion_evenements from './pages/Gestion_evenements';
 import Login from './pages/Login';
 
-/* Core CSS required for Ionic components to work properly */
-import '@ionic/react/css/core.css';
 
-/* Basic CSS for apps built with Ionic */
+import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
 import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
-
-/* Optional CSS utils that can be commented out */
 import '@ionic/react/css/padding.css';
 import '@ionic/react/css/float-elements.css';
 import '@ionic/react/css/text-alignment.css';
@@ -34,12 +30,7 @@ import '@ionic/react/css/text-transformation.css';
 import '@ionic/react/css/flex-utils.css';
 import '@ionic/react/css/display.css';
 
-/**
- * Ionic Dark Mode
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
- */
+
 
 /* import '@ionic/react/css/palettes/dark.always.css'; */
 /* import '@ionic/react/css/palettes/dark.class.css'; */
@@ -81,7 +72,7 @@ const Tabs: React.FC = () => ( //composant react de navigation interne qui def l
   </IonTabs>
 );
 
-const App: React.FC = () => ( //composant react global de notre application :Il configure Ionic, le routing avec React Router et détermine quelles pages sont affichées selon l’URL avec le composant TABS.
+const App: React.FC = () => ( 
   <IonApp>
     <IonReactRouter>
       <IonRouterOutlet>
