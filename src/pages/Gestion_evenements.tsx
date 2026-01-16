@@ -42,7 +42,7 @@ const eventActions = [
   "Historique événements",
 ];
 
-const Gestion_évenements: React.FC = () => {
+const Gestion_evenements: React.FC = () => {
   const isAuthenticated = useIsAuthenticated();
   const [events, setEvents] = useState<Event[]>([]);
   const [showEvents, setShowEvents] = useState(false);
@@ -316,7 +316,7 @@ const Gestion_évenements: React.FC = () => {
               <IonButton
                 className="ion-margin-top"
                 onClick={() =>
-                  router.push(`/login?redirect=${encodeURIComponent("/app/Gestion_évenements")}`, "forward")
+                  router.push(`/login?redirect=${encodeURIComponent("/app/Gestion_evenements")}`, "forward")
                 }
               >
                 Aller à la page de connexion
@@ -354,7 +354,7 @@ const Gestion_évenements: React.FC = () => {
                 fill="solid"
                 color="primary"
                 onClick={() =>
-                  router.push(`/login?redirect=${encodeURIComponent("/app/Gestion_évenements")}`, "forward")
+                  router.push(`/login?redirect=${encodeURIComponent("/app/Gestion_evenements")}`, "forward")
                 }
               >
                 Se connecter
@@ -733,4 +733,4 @@ const Gestion_évenements: React.FC = () => {
   );
 };
 
-export default Gestion_évenements;
+export default Gestion_evenements;

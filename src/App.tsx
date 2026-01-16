@@ -15,7 +15,7 @@ import { ellipse, camera, list, person } from 'ionicons/icons';
 //on import les composants react des différentes pages
 import Participants from './pages/Participants';
 import Scan from './pages/Scan';
-import Gestion_évenements from './pages/Gestion_évenements';
+import Gestion_evenements from './pages/Gestion_evenements';
 import Login from './pages/Login';
 
 /* Core CSS required for Ionic components to work properly */
@@ -57,8 +57,8 @@ const Tabs: React.FC = () => ( //composant react de navigation interne qui def l
       <Route exact path="/app/Scan">
         <Scan />
       </Route>
-      <Route path="/app/Gestion_évenements">
-        <Gestion_évenements />
+      <Route path="/app/Gestion_evenements">
+        <Gestion_evenements />
       </Route>
       <Route exact path="/app">
         <Redirect to="/app/Participants" />
@@ -73,7 +73,7 @@ const Tabs: React.FC = () => ( //composant react de navigation interne qui def l
         <IonIcon aria-hidden="true" icon={camera} />
         <IonLabel>Scan</IonLabel>
       </IonTabButton>
-      <IonTabButton tab="Gestion_évenements" href="/app/Gestion_évenements">
+      <IonTabButton tab="Gestion_evenements" href="/app/Gestion_evenements">
         <IonIcon aria-hidden="true" icon={person} />
         <IonLabel>Gestion d'évenements</IonLabel>
       </IonTabButton>
