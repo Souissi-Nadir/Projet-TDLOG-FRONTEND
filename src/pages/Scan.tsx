@@ -84,8 +84,8 @@ const Scan: React.FC = () => {
       setStatus("success");
       setMessage(
         data.user_name
-          ? `Présence enregistrée pour ${data.user_name} ✅`
-          : "Présence enregistrée ✅"
+          ? `Présence enregistrée pour ${data.user_name} `
+          : "Présence enregistrée "
       );
       setAlertConfig({
         open: true,

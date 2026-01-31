@@ -1,6 +1,4 @@
-/* ===========================
-   Barre du haut (toolbar)
-   =========================== */
+/*Barre du haut (toolbar)*/
 .participants-toolbar {
   --background: var(--ion-color-primary);
   --color: white;
@@ -28,9 +26,7 @@
   margin-bottom: 2px;
 }
 
-/* ===========================
-   Contenu & Titre événement
-   =========================== */
+/* Contenu & Titre événement*/
 .participants-content {
   --padding-start: 12px;
   --padding-end: 12px;
@@ -48,9 +44,7 @@
   letter-spacing: 0.3px;
 }
 
-/* ===========================
-   Cartes (blocs)
-   =========================== */
+/*Cartes (blocs)*/
 .block-card {
   border-radius: 16px;
   overflow: hidden;
@@ -64,9 +58,7 @@
   padding-bottom: 6px; 
 }
 
-/* ===========================
-   Formulaire d'ajout manuel
-   =========================== */
+/*Formulaire d'ajout manuel*/
 .manual-form-list ion-item {
   --inner-padding-end: 8px;
   --padding-start: 8px;
@@ -142,9 +134,7 @@
   grid-column: 1 / -1;
 }
 
-/* ===========================
-   Import CSV (bouton blanc)
-   =========================== */
+/*Import CSV (bouton blanc)*/
 .csv-dropzone {
   display: flex;
   justify-content: center;
@@ -195,9 +185,7 @@
   color: var(--ion-color-medium);
 }
 
-/* ===========================
-   Tableau participants
-   =========================== */
+/* Tableau participants */
 .table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -319,9 +307,7 @@ ion-input.locked {
   align-items: center;
 }
 
-/* ===========================
-   Petits ajustements boutons
-   =========================== */
+/*Petits ajustements boutons*/
 .col-actions ion-button {
   --padding-start: 6px;
   --padding-end: 6px;
@@ -331,9 +317,7 @@ ion-input.locked {
   filter: brightness(0.98);
 }
 
-/* ===========================
-   Dark mode léger (optionnel)
-   =========================== */
+/*Dark mode léger*/
 @media (prefers-color-scheme: dark) {
   .block-card {
     background: var(--ion-color-step-50, #1e1e1e);
