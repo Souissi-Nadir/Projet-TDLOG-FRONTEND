@@ -145,7 +145,6 @@ const Gestion_evenements: React.FC = () => {
       setDeleteMode(false);
       setDeleteError(null);
     } else {
-      // Pour les autres actions, tu feras plus tard
       console.log(`Redirection à implémenter pour: ${action}`);
       setEditMode(false);
       setShowEvents(false);
@@ -423,7 +422,7 @@ const Gestion_evenements: React.FC = () => {
             </IonCard>
           ))}
 
-          {/* 👇 Affichage des événements récupérés */}
+          {/*  Affichage des événements récupérés */}
           {showEvents && events.map((event) => (
             <IonCard key={event.id}>
               <IonCardContent>
@@ -436,7 +435,7 @@ const Gestion_evenements: React.FC = () => {
             </IonCard>
           ))}
 
-          {/* 👇 Affichage pour la modification des événements */}
+          {/*  Affichage pour la modification des événements */}
           {editMode && (
             <IonCard>
               <IonCardHeader>
