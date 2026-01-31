@@ -1,14 +1,33 @@
 # PROJET TD-LOG — Application de Gestion d'Événements avec QR Codes
+Le projet est séparé en deux dépôts Git :
+PROJET-TDLOG-BACKEND/ et PROJET-TDLOG-FRONTEND/
+Les deux projets sont indépendants, mais le frontend a besoin que le backend soit lancé pour fonctionner.
+Prérequis :
+•	Python 3.10+ installé
+•	main.py + requirements.txt (pip install -r requirements.txt)
+•	Un dossier .venv OU la possibilité d’en créer un
+•	Node.js 18+
+•	npm install
+
+
+# URl du backend:
+VITE_BACKEND_URL=http://127.0.0.1:8000
 
 ### COMMANDE POUR LANCER LE BACK :
 uvicorn app.main:app --reload --port 8000 --env-file .env
 
+Le terminal doit afficher :
+Uvicorn running on http://127.0.0.1:8000
+
+
 ### COMMANDE POUR LANCER LE FRONT :
 npm run dev 
 
-Il faut se mettre dans l'environnement virtuel et installer les packages si nécéssaire.
-VITE_BACKEND_URL=http://127.0.0.1:8000
+ouvrir l'url http://localhost:5173/ dans le navigateur
 
+### Mot de passe du compte de base :
+admin@tdlog.local
+changeme
 
 
 
