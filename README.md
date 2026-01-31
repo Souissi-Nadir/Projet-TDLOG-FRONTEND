@@ -2,16 +2,17 @@
 Le projet est séparé en deux dépôts Git :
 PROJET-TDLOG-BACKEND/ et PROJET-TDLOG-FRONTEND/
 Les deux projets sont indépendants, mais le frontend a besoin que le backend soit lancé pour fonctionner.
+
 Prérequis :
 •	Python 3.10+ installé
-•	main.py + requirements.txt (pip install -r requirements.txt)
-•	Un dossier .venv OU la possibilité d’en créer un
+•	requirements.txt (pip install -r requirements.txt)
 •	Node.js 18+
 •	npm install
-
-
-# URl du backend:
-VITE_BACKEND_URL=http://127.0.0.1:8000
+un dossier .env avec ces variables d'environnement dedans : 
+SUPERADMIN_EMAIL=admin@tdlog.local
+SUPERADMIN_PASSWORD=changeme
+SUPERADMIN_NAME=Super Admin
+VITE_BACKEND_URL=http://localhost:8000  c'est l'URl du backend
 
 ### COMMANDE POUR LANCER LE BACK :
 uvicorn app.main:app --reload --port 8000 --env-file .env
