@@ -1,4 +1,3 @@
-//test de la com avec le backend 
 import {
   Event as BackendEvent,
   EventParticipant,

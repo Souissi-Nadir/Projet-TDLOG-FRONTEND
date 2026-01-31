@@ -1,6 +1,3 @@
-//Connecté à l'api par arthur 
-
-
 import React, { useState } from 'react';
 import {
   IonContent,
@@ -253,7 +250,7 @@ const Gestion_evenements: React.FC = () => {
       });
       present({ message: 'Événement mis à jour !', duration: 1500, color: 'success' });
       await loadEvents();
-      setEditingEventId(null); // Quitte le mode édition pour cette ligne
+      setEditingEventId(null); 
     } catch (e: any) {
       console.error("Erreur lors de la mise à jour de l'événement", e);
       const msg = isForbiddenError(e) ? forbiddenMessage : (e?.message || "Erreur lors de la mise à jour.");
@@ -463,7 +460,6 @@ const Gestion_evenements: React.FC = () => {
                               onIonChange={(e) => handleInputChange(event.id, 'location', e.detail.value!)}
                               className="ion-margin-top"
                             />
-                            {/* Use plain text input for editing dates to avoid Ionic datetime overlay issues */}
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                               <IonInput
                                 label="Date (ISO)"
